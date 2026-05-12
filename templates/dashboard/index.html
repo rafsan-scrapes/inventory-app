@@ -1,0 +1,394 @@
+<!-- #Add image viewing functionalities
+#IMAGES IN PDF
+# NO NOTES COLUMN NECESSARY IN PDF
+#make it so that you can add or subtract no of parts from home page
+#location ( shelf-row-column)row and column will be characters #edit
+#image will be bigger
+#notes no needed in home page
+#product model number under product name
+#team functionalies create delete edit single team , no needed for members
+#car functionalities
+-->
+
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block title %}Parts Inventory{% endblock %}
+
+{% block content %}
+{% if user.is_authenticated %}
+<div class="page-content">
+  
+  <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+    <button class="lightbox-close" id="lightbox-close" aria-label="Close">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+    <div class="lightbox-backdrop" id="lightbox-backdrop"></div>
+    <div class="lightbox-content">
+      <img id="lightbox-img" src="" alt="">
+      <p id="lightbox-caption" class="lightbox-caption"></p>
+    </div>
+  </div>
+  {# ── Top bar ────────────────────────────────────────────────── #}
+  <div class="top-bar">
+    <div class="filter-title">
+      <i class="fa-solid fa-boxes-stacked"></i>
+      <span>Parts Inventory</span>
+    </div>
+    {# TODO: change href to {% url 'dashboard-add' %} once that view exists #}
+    <a href="{% url 'add-part' %}" class="btn btn-primary">
+      <i class="fa-solid fa-plus"></i> Add Part
+    </a>
+  </div>
+
+  {# ── Filter form (GET — does not interfere with the PDF export POST) ── #}
+  <form class="filter-form" method="get" action="{% url 'dashboard-index' %}">
+    <div class="filter-fields">
+
+      <div class="filter-field">
+        <label for="f-product">Product Type</label>
+        <select id="f-product" name="product_type">
+          <option value="">All</option>
+          {% for pt in product_types %}
+          <option value="{{ pt.id }}" {% if request.GET.product_type|stringformat:"s" == pt.id|stringformat:"s" %}selected{% endif %}>{{ pt.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <label for="f-brand">Brand</label>
+        <select id="f-brand" name="brand">
+          <option value="">All</option>
+          {% for b in brands %}
+          <option value="{{ b.id }}" {% if request.GET.brand|stringformat:"s" == b.id|stringformat:"s" %}selected{% endif %}>{{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <label for="f-part">Part Type</label>
+        <select id="f-part" name="part_type" data-preselected="{{ request.GET.part_type|default:'' }}">
+          <option value="">All</option>
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <label for="f-shelf">Shelf</label>
+        <input type="text" id="f-shelf" name="shelf" placeholder="e.g. 2" value="{{ request.GET.shelf }}">
+      </div>
+
+      <div class="filter-field">
+        <label for="f-col">Column</label>
+        <input type="text" id="f-col" name="column" placeholder="e.g. 1, left" value="{{ request.GET.column }}">
+      </div>
+
+      <div class="filter-field">
+        <label for="f-row">Row</label>
+        <input type="text" id="f-row" name="row" placeholder="e.g. 3, right" value="{{ request.GET.row }}">
+      </div>
+
+    </div>
+
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">
+        <i class="fa-solid fa-magnifying-glass"></i> Search
+      </button>
+      {# Export button triggers JS — not a submit for this form #}
+      <button type="button" class="btn btn-outline" id="export-btn">
+        <i class="fa-solid fa-file-pdf"></i> Export PDF
+      </button>
+    </div>
+  </form>
+
+  <form id="pdf-form" method="post" action="{% url 'export-pdf' %}">
+    {% csrf_token %}
+    {# JS populates hidden part_id inputs here before submitting #}
+  </form>
+
+  {# ── Table ──────────────────────────────────────────────────── #}
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th><input type="checkbox" id="select-all" title="Select all"></th>
+          <th>ID</th>
+          <th>Image</th>
+          <th>Product Type</th>
+          <th>Brand</th>
+          <th>Part</th>
+          <th>New</th>
+          <th>Used</th>
+          <th>Size (kg)</th>
+          <th>Part Model No.</th>
+          <th>Edit</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+        {% for item in items %}
+
+        <tr>
+          <td><input type="checkbox" class="row-check" value="{{item.id}}"></td>
+          <td>{{ item.id }}</td>
+
+          <td>
+            {% if item.image %}
+              <img src="{{ item.image.url }}"
+                  alt="{{ item.product_type }} image"
+                  class="thumb"
+                  data-src="{{ item.image.url }}"
+                  data-alt="{{ item.product_type }} — {{ item.brand }} — {{ item.part_type }}"
+                  title="Click to enlarge">
+            {% else %}
+              <span class="no-img">—</span>
+            {% endif %}
+          </td>
+
+          <td>{{ item.product_type }}
+          {% if item.product_model != None %}
+            <br>
+            ({{ item.product_model }})
+          {% endif %}
+            </td>
+          <td>{{ item.brand }}</td>
+          <td>{{ item.part_type }}</td>
+          <td class="stock-new">
+            <div class="stock-adjuster">
+              <button class="adj-btn"
+                      data-pk="{{ item.id }}"
+                      data-field="total_new"
+                      data-delta="-1"
+                      title="Remove one new unit">−</button>
+              <span class="stock-val" id="stock-new-{{ item.id }}">{{ item.total_new }}</span>
+              <button class="adj-btn"
+                      data-pk="{{ item.id }}"
+                      data-field="total_new"
+                      data-delta="1"
+                      title="Add one new unit">+</button>
+            </div>
+          </td>
+          <td class="stock-used">
+            <div class="stock-adjuster">
+              <button class="adj-btn"
+                      data-pk="{{ item.id }}"
+                      data-field="total_used"
+                      data-delta="-1"
+                      title="Remove one used unit">−</button>
+              <span class="stock-val" id="stock-used-{{ item.id }}">{{ item.total_used }}</span>
+              <button class="adj-btn"
+                      data-pk="{{ item.id }}"
+                      data-field="total_used"
+                      data-delta="1"
+                      title="Add one used unit">+</button>
+            </div>
+          </td>
+          <td>{{ item.size_kg }}</td>
+          <td>{{ item.model_number }}</td>
+          <!-- <td>{{ item.shelf_number }}</td>
+          <td>{{ item.column_number }}</td>
+          <td>{{ item.row_number }}</td>
+          <td class="notes-cell" title="Rusty insides">{{ item.notes }}</td> -->
+          <td>
+            {# TODO: change href to {% url 'dashboard-edit' part.pk %} #}
+            <a href="{% url 'edit-part' item.id %}" class="btn btn-icon" title="Edit">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+  // ── Select-all checkbox ────────────────────────────────────────────────
+  const selectAll = document.getElementById('select-all');
+  const rowChecks = () => document.querySelectorAll('.row-check');
+
+  selectAll.addEventListener('change', function () {
+    rowChecks().forEach(cb => { cb.checked = this.checked; });
+  });
+
+  document.addEventListener('change', function (e) {
+    if (!e.target.classList.contains('row-check')) return;
+    const all     = rowChecks();
+    const checked = document.querySelectorAll('.row-check:checked');
+    selectAll.indeterminate = checked.length > 0 && checked.length < all.length;
+    selectAll.checked       = checked.length === all.length && all.length > 0;
+  });
+
+  // ── Export PDF ─────────────────────────────────────────────────────────
+  document.getElementById('export-btn').addEventListener('click', function () {
+    const pdfForm = document.getElementById('pdf-form');
+    const checked = document.querySelectorAll('.row-check:checked');
+
+    if (checked.length === 0) {
+      alert('Select at least one part to export.');
+      return;
+    }
+
+    pdfForm.querySelectorAll('input.injected').forEach(el => el.remove());
+
+    checked.forEach(cb => {
+      const input = document.createElement('input');
+      input.type      = 'hidden';
+      input.name      = 'part_id';
+      input.value     = cb.value;
+      input.className = 'injected';
+      pdfForm.appendChild(input);
+    });
+
+    pdfForm.submit();
+  });
+
+  // ── Stock adjust (+/−) ─────────────────────────────────────────────────
+  const CSRF = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.adj-btn');
+    if (!btn) return;
+
+    const pk    = btn.dataset.pk;
+    const field = btn.dataset.field;
+    const delta = btn.dataset.delta;
+
+    // Optimistic UI: disable both buttons for this row while request is in flight
+    const adjuster = btn.closest('.stock-adjuster');
+    const allBtns  = adjuster.querySelectorAll('.adj-btn');
+    allBtns.forEach(b => b.disabled = true);
+
+    fetch(`/part/${pk}/adjust/`, {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken':  CSRF,
+      },
+      body: `field=${field}&delta=${delta}`,
+    })
+    .then(res => {
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
+      return res.json();
+    })
+    .then(data => {
+      // Update the visible number
+      const spanId = `stock-${field === 'total_new' ? 'new' : 'used'}-${pk}`;
+      const span   = document.getElementById(spanId);
+      if (span) span.textContent = data.value;
+
+      // Dim the − button if value is now 0 (can't go lower)
+      const minusBtn = adjuster.querySelector('[data-delta="-1"]');
+      if (minusBtn) minusBtn.classList.toggle('adj-btn--disabled', data.value === 0);
+    })
+    .catch(() => {
+      alert('Could not update stock. Please refresh and try again.');
+    })
+    .finally(() => {
+      allBtns.forEach(b => b.disabled = false);
+    });
+  });
+
+  // On page load: dim any − buttons whose current value is already 0
+  document.querySelectorAll('.adj-btn[data-delta="-1"]').forEach(btn => {
+    const pk    = btn.dataset.pk;
+    const field = btn.dataset.field;
+    const spanId = `stock-${field === 'total_new' ? 'new' : 'used'}-${pk}`;
+    const span   = document.getElementById(spanId);
+    if (span && parseInt(span.textContent, 10) === 0) {
+      btn.classList.add('adj-btn--disabled');
+    }
+  });
+
+  // ── Filter: Part Type cascade ───────────────────────────────────────────
+  (function() {
+    const productSelect = document.getElementById('f-product');
+    const partSelect = document.getElementById('f-part');
+    const preselectedPartType = partSelect.dataset.preselected;
+
+    function loadPartTypes(productTypeId, callback) {
+      // Clear existing options except "All"
+      partSelect.innerHTML = '<option value="">All</option>';
+
+      if (!productTypeId) {
+        callback();
+        return;
+      }
+
+      fetch('/get-part-types/?product_type_id=' + encodeURIComponent(productTypeId))
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          data.part_types.forEach(function(pt) {
+            const opt = document.createElement('option');
+            opt.value = pt.id;
+            opt.textContent = pt.name;
+            partSelect.appendChild(opt);
+          });
+          callback();
+        });
+    }
+
+    // Load part types on page load if a product type is selected
+    const initialProductId = productSelect.value;
+    if (initialProductId) {
+      loadPartTypes(initialProductId, function() {
+        if (preselectedPartType) {
+          partSelect.value = preselectedPartType;
+        }
+      });
+    } else if (preselectedPartType) {
+      // If product type is not selected but part_type is, load all part types
+      // (this shouldn't normally happen, but handle it gracefully)
+      loadPartTypes('', function() {});
+    }
+
+    // Reload part types when product type changes
+    productSelect.addEventListener('change', function() {
+      loadPartTypes(this.value, function() {});
+    });
+  })();
+
+
+// ── Lightbox ───────────────────────────────────────────────────────────
+const lightbox        = document.getElementById('lightbox');
+const lightboxImg     = document.getElementById('lightbox-img');
+const lightboxCaption = document.getElementById('lightbox-caption');
+const lightboxClose   = document.getElementById('lightbox-close');
+const lightboxBdrop   = document.getElementById('lightbox-backdrop');
+
+function openLightbox(src, alt) {
+  lightboxImg.src         = src;
+  lightboxImg.alt         = alt;
+  lightboxCaption.textContent = alt;
+  lightbox.classList.add('lightbox--open');
+  document.body.style.overflow = 'hidden';   // prevent background scroll
+  lightboxClose.focus();
+}
+
+function closeLightbox() {
+  lightbox.classList.remove('lightbox--open');
+  document.body.style.overflow = '';
+  lightboxImg.src = '';                       // free memory
+}
+
+// Open on thumbnail click
+document.addEventListener('click', function (e) {
+  const thumb = e.target.closest('.thumb');
+  if (!thumb) return;
+  openLightbox(thumb.dataset.src, thumb.dataset.alt);
+});
+
+// Close on × button or backdrop click
+lightboxClose.addEventListener('click', closeLightbox);
+lightboxBdrop.addEventListener('click', closeLightbox);
+
+// Close on Escape key
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && lightbox.classList.contains('lightbox--open')) {
+    closeLightbox();
+  }
+});
+</script>
+{% endif %}
+{% endblock content %}

@@ -1,0 +1,17 @@
+<nav>
+  <a class="home-link" href="{% url 'dashboard-index' %}">
+    <i id="box" class="fa-solid fa-cube"></i>
+    <span class="nav-title">Inventory</span>
+  </a>
+
+  {% if user.is_authenticated %}
+  <form action="{% url 'user-logout' %}" method="post">
+    {% csrf_token %}
+    {# Must be POST — Django 5 returns 405 on GET logout #}
+    <button type="submit" class="btn-outline">
+      <i class="fa-solid fa-right-from-bracket"></i>
+      <span class="nav-title">Logout</span>
+    </button>
+  </form>
+  {% endif %}
+</nav>
