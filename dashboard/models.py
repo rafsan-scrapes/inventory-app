@@ -62,7 +62,7 @@ class Part(models.Model):
     product_model = models.CharField(max_length=100, null=True, blank=True)
     total_new = models.PositiveIntegerField(default=0)
     total_used = models.PositiveIntegerField(default=0)
-    size_kg = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    size_kg = models.CharField(max_length=100, null=True, blank=True)
     model_number = models.CharField(max_length=100, null=True, blank=True)
     shelf_number = models.PositiveIntegerField()
     column_number = models.CharField(max_length=100, null=True)

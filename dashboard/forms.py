@@ -30,9 +30,7 @@ class PartForm(forms.ModelForm):
             ),
             "total_new": forms.NumberInput(attrs={"min": "0", "placeholder": "0"}),
             "total_used": forms.NumberInput(attrs={"min": "0", "placeholder": "0"}),
-            "size_kg": forms.NumberInput(
-                attrs={"min": "0", "step": "0.01", "placeholder": "e.g. 5.5"}
-            ),
+            "size_kg": forms.TextInput(attrs={"placeholder": "e.g. 5.5kg/9kg"}),
             "model_number": forms.TextInput(attrs={"placeholder": "e.g. WAE28468GB"}),
             "shelf_number": forms.NumberInput(
                 attrs={"min": "1", "placeholder": "e.g. 2"}

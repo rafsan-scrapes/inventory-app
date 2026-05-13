@@ -30,7 +30,7 @@
 
 /* ── Base ───────────────────────────────────────────────────── */
 html {
-  font-size: 13px;
+  font-size: 16px;
   font-family: Poppins, 'Segoe UI', Tahoma, sans-serif;
 }
 
@@ -279,7 +279,7 @@ nav {
   align-items: center;
   gap: 10px;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 1.25rem;
 }
 .filter-title i { color: var(--primary); }
 
@@ -347,7 +347,7 @@ thead th {
   top: 0;
   background-color: var(--bg);
   color: var(--text-muted);
-  font-size: 0.75rem;
+  font-size: 1rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -365,7 +365,7 @@ tbody tr:hover td {
 
 td {
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 1rem;
   background-color: var(--bg-light);
   padding: 16px 8px;
   text-align: center;
