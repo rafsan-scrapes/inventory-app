@@ -30,7 +30,7 @@
 
 /* ── Base ───────────────────────────────────────────────────── */
 html {
-  font-size: 16px;
+  font-size: 14px;
   font-family: Poppins, 'Segoe UI', Tahoma, sans-serif;
 }
 
@@ -347,7 +347,7 @@ thead th {
   top: 0;
   background-color: var(--bg);
   color: var(--text-muted);
-  font-size: 1rem;
+  font-size: 0.8rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
