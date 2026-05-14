@@ -94,3 +94,19 @@ class Part(models.Model):
 
     def __str__(self):
         return f"{self.product_type} — {self.brand} — {self.part_type}"
+
+    @property
+    def stock_status(self):
+        """
+        Returns the stock status based on total_new and total_used:
+        - 'In Stock': sum > 2
+        - 'Out of Stock': sum = 0
+        - 'Low In Stock': sum >= 1 and <= 2
+        """
+        total = self.total_new + self.total_used
+        if total == 0:
+            return "Out of Stock"
+        elif total <= 2:
+            return "Low In Stock"
+        else:
+            return "In Stock"

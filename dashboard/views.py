@@ -17,9 +17,9 @@ def index(request):
     product_type_id = request.GET.get("product_type", "")
     brand_id = request.GET.get("brand", "")
     part_type_id = request.GET.get("part_type", "")
-    shelf = request.GET.get("shelf", "")
-    column = request.GET.get("column", "")
-    row = request.GET.get("row", "")
+    product_model = request.GET.get("product_model", "").strip()
+    part_model = request.GET.get("part_model", "").strip()
+    stock_status_filter = request.GET.get("stock_status", "").strip()
 
     if product_type_id:
         items = items.filter(product_type_id=product_type_id)
@@ -27,21 +27,50 @@ def index(request):
         items = items.filter(brand_id=brand_id)
     if part_type_id:
         items = items.filter(part_type_id=part_type_id)
-    if shelf:
-        items = items.filter(shelf_number=shelf)
-    if column:
-        items = items.filter(column_number=column)
-    if row:
-        items = items.filter(row_number=row)
+    if product_model:
+        items = items.filter(product_model__icontains=product_model)
+    if part_model:
+        items = items.filter(model_number__icontains=part_model)
+
+    # Filter by computed stock status (done in Python since it's a property)
+    if stock_status_filter:
+        filtered_items = []
+        for item in items:
+            if item.stock_status == stock_status_filter:
+                filtered_items.append(item)
+        items = filtered_items
 
     # Get filter options for the form
     product_types = ProductType.objects.all().order_by("name")
     brands = Brand.objects.all().order_by("name")
 
+    # Compute stock status for all parts (unfiltered for summary display)
+    all_parts = Part.objects.select_related("product_type", "brand", "part_type").all()
+    out_of_stock_parts = []
+    low_stock_parts = []
+
+    for part in all_parts:
+        total = part.total_new + part.total_used
+        display_name = f"{part.part_type.name}-{part.product_type.name}-{part.brand.name}"
+        part_display = {'pk': part.pk, 'part_display': display_name}
+
+        if total == 0:
+            out_of_stock_parts.append(part_display)
+        elif total <= 2:
+            low_stock_parts.append(part_display)
+
+    # Get and clear event notification from session
+    event_notification = None
+    if 'event_notification' in request.session:
+        event_notification = request.session.pop('event_notification')
+
     context = {
         "items": items,
         "product_types": product_types,
         "brands": brands,
+        "out_of_stock_parts": out_of_stock_parts,
+        "low_stock_parts": low_stock_parts,
+        "event_notification": event_notification,
     }
     return render(request, "dashboard/index.html", context=context)
 
@@ -54,11 +83,18 @@ def get_part_types(request):
     """
     GET /get-part-types/?product_type_id=<id>
     Returns JSON list of PartTypes for the given ProductType.
+    If product_type_id is 'all' or empty, returns all PartTypes.
     Called by the add/edit form's JS when Product Type changes.
     """
     product_type_id = request.GET.get("product_type_id", "").strip()
     part_types = []
-    if product_type_id:
+    if not product_type_id or product_type_id == "all":
+        # Return all part types (for dashboard filter when "All" is selected)
+        part_types = list(
+            PartType.objects.values("id", "name")
+            .order_by("name")
+        )
+    else:
         part_types = list(
             PartType.objects.filter(product_type_id=product_type_id)
             .values("id", "name")
@@ -157,6 +193,12 @@ def part(request):
             try:
                 part_instance.full_clean()
                 part_instance.save()
+                # Store success message in session
+                part_name = f"{part_type.name}-{product_type.name}-{brand.name}"
+                request.session['event_notification'] = {
+                    'message': f"{part_name} has been added successfully!",
+                    'type': 'success'
+                }
                 return redirect("dashboard-index")
             except ModelValidationError as exc:
                 custom_shelf_msg = "A part with this Shelf Number, Row Number and Column Number already exists."
@@ -512,6 +554,21 @@ def adjust_stock(request, pk):
     part = get_object_or_404(Part, pk=pk)
     current = getattr(part, field)
     new_value = max(0, current + delta)
+
+    # Build notification message for stock change
+    part_name = f"{part.part_type.name}-{part.product_type.name}-{part.brand.name}"
+    stock_type = "new" if field == "total_new" else "used"
+    if delta == 1:
+        message = f"A {stock_type} part has been added to {part_name}"
+        notif_type = 'add'
+    else:
+        message = f"A {stock_type} part has been removed from {part_name}"
+        notif_type = 'remove'
+
+    request.session['event_notification'] = {
+        'message': message,
+        'type': notif_type
+    }
 
     Part.objects.filter(pk=pk).update(**{field: new_value})
 

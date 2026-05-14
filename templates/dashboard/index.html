@@ -1,17 +1,17 @@
-<!-- #Add image viewing functionalities
-#team functionalies create delete edit single team , no needed for members
+<!-- #Notes
 #car functionalities
-size characters already added
-design will be blue and white
-notifications for adding part #2 top of dashboard
+size characters already added #done
+design will be blue and white  #done
+notifications for adding part #2 top of dashboard #done
 notification for adding or removing old and new parts quantity #2 top of dashboard
-new user who can view, search and export only #2
+new user who can view, search and export only #2 #done
 stock status -- out of stock, in stock, low in stock (total less than 3) #1
 old 1
 new 1
-search options must have product model number, part model number
-remove shelf-row-column from search options
-list all available part types in according to values
+#done
+search options must have product model number, part model number #done
+remove shelf-row-column from search options #done
+list all available part types in according to values #done
 -->
 
 
@@ -35,6 +35,30 @@ list all available part types in according to values
       <p id="lightbox-caption" class="lightbox-caption"></p>
     </div>
   </div>
+
+  {# ── Event Notification Messages (3-second display) ── #}
+  {% if event_notification %}
+  <div id="event-notification" class="notification notification--{{ event_notification.type }}">
+    {{ event_notification.message }}
+  </div>
+  {% endif %}
+
+  {# ── Stock Status Summary Messages (persistent) ── #}
+  {% if out_of_stock_parts or low_stock_parts %}
+  <div class="stock-status-messages">
+    {% if out_of_stock_parts %}
+    <div class="notification notification--danger">
+      {% for part in out_of_stock_parts %}{{ part.part_display }}{% if not forloop.last %}, {% endif %}{% endfor %} {% if out_of_stock_parts|length == 1 %}is{% else %}are{% endif %} out of stock
+    </div>
+    {% endif %}
+    {% if low_stock_parts %}
+    <div class="notification notification--warning">
+      {% for part in low_stock_parts %}{{ part.part_display }}{% if not forloop.last %}, {% endif %}{% endfor %} {% if low_stock_parts|length == 1 %}is{% else %}are{% endif %} low in stock
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
   {# ── Top bar ────────────────────────────────────────────────── #}
   <div class="top-bar">
     <div class="filter-title">
@@ -42,9 +66,12 @@ list all available part types in according to values
       <span>Parts Inventory</span>
     </div>
     {# TODO: change href to {% url 'dashboard-add' %} once that view exists #}
-    <a href="{% url 'add-part' %}" class="btn btn-primary">
-      <i class="fa-solid fa-plus"></i> Add Part
-    </a>
+    
+    {% if user.is_authenticated and user.is_staff %}
+      <a href="{% url 'add-part' %}" class="btn btn-primary">
+        <i class="fa-solid fa-plus"></i> Add Part
+      </a>
+    {% endif %}
   </div>
 
   {# ── Filter form (GET — does not interfere with the PDF export POST) ── #}
@@ -79,18 +106,23 @@ list all available part types in according to values
       </div>
 
       <div class="filter-field">
-        <label for="f-shelf">Shelf</label>
-        <input type="text" id="f-shelf" name="shelf" placeholder="e.g. 2" value="{{ request.GET.shelf }}">
+        <label for="f-product-model">Product Model No.</label>
+        <input type="text" id="f-product-model" name="product_model" placeholder="e.g. ABC-123" value="{{ request.GET.product_model }}">
       </div>
 
       <div class="filter-field">
-        <label for="f-col">Column</label>
-        <input type="text" id="f-col" name="column" placeholder="e.g. 1, left" value="{{ request.GET.column }}">
+        <label for="f-part-model">Part Model No.</label>
+        <input type="text" id="f-part-model" name="part_model" placeholder="e.g. XYZ-789" value="{{ request.GET.part_model }}">
       </div>
 
       <div class="filter-field">
-        <label for="f-row">Row</label>
-        <input type="text" id="f-row" name="row" placeholder="e.g. 3, right" value="{{ request.GET.row }}">
+        <label for="f-stock-status">Stock Status</label>
+        <select id="f-stock-status" name="stock_status">
+          <option value="">All</option>
+          <option value="In Stock" {% if request.GET.stock_status == 'In Stock' %}selected{% endif %}>In Stock</option>
+          <option value="Low In Stock" {% if request.GET.stock_status == 'Low In Stock' %}selected{% endif %}>Low In Stock</option>
+          <option value="Out of Stock" {% if request.GET.stock_status == 'Out of Stock' %}selected{% endif %}>Out of Stock</option>
+        </select>
       </div>
 
     </div>
@@ -124,9 +156,14 @@ list all available part types in according to values
           <th>Part</th>
           <th>New</th>
           <th>Used</th>
-          <th>Size (kg)</th>
+          <th>Size</th>
           <th>Part Model No.</th>
-          <th>Edit</th>
+          <th>Stock Status</th>
+          <th>
+            {% if user.is_authenticated and user.is_staff %}
+              Edit
+            {% endif %}
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -160,46 +197,79 @@ list all available part types in according to values
           <td>{{ item.part_type }}</td>
           <td class="stock-new">
             <div class="stock-adjuster">
-              <button class="adj-btn"
-                      data-pk="{{ item.id }}"
-                      data-field="total_new"
-                      data-delta="-1"
-                      title="Remove one new unit">−</button>
+              
+              {% if user.is_authenticated and user.is_staff %}        
+                <button class="adj-btn"
+                        data-pk="{{ item.id }}"
+                        data-field="total_new"
+                        data-delta="-1"
+                        title="Remove one new unit">−</button>
+              {% endif %}
+
               <span class="stock-val" id="stock-new-{{ item.id }}">{{ item.total_new }}</span>
-              <button class="adj-btn"
-                      data-pk="{{ item.id }}"
-                      data-field="total_new"
-                      data-delta="1"
-                      title="Add one new unit">+</button>
+              
+              {% if user.is_authenticated and user.is_staff %}
+                <button class="adj-btn"
+                        data-pk="{{ item.id }}"
+                        data-field="total_new"
+                        data-delta="1"
+                        title="Add one new unit">+</button>
+              {% endif %}
+
             </div>
           </td>
           <td class="stock-used">
             <div class="stock-adjuster">
-              <button class="adj-btn"
-                      data-pk="{{ item.id }}"
-                      data-field="total_used"
-                      data-delta="-1"
-                      title="Remove one used unit">−</button>
+              
+              {% if user.is_authenticated and user.is_staff %}
+                <button class="adj-btn"
+                        data-pk="{{ item.id }}"
+                        data-field="total_used"
+                        data-delta="-1"
+                        title="Remove one used unit">−</button>              
+              {% endif %}
+                
+
               <span class="stock-val" id="stock-used-{{ item.id }}">{{ item.total_used }}</span>
-              <button class="adj-btn"
-                      data-pk="{{ item.id }}"
-                      data-field="total_used"
-                      data-delta="1"
-                      title="Add one used unit">+</button>
+              
+              {% if user.is_authenticated and user.is_staff %}
+                <button class="adj-btn"
+                        data-pk="{{ item.id }}"
+                        data-field="total_used"
+                        data-delta="1"
+                        title="Add one used unit">+</button>
+              {% endif %}
+                
+
             </div>
           </td>
           <td>{{ item.size_kg }}</td>
           <td>{{ item.model_number }}</td>
+          <td>
+            {% if item.stock_status == 'In Stock' %}
+              <span class="stock-status stock-status--in-stock">{{ item.stock_status }}</span>
+            {% elif item.stock_status == 'Low In Stock' %}
+              <span class="stock-status stock-status--low">{{ item.stock_status }}</span>
+            {% else %}
+              <span class="stock-status stock-status--out">{{ item.stock_status }}</span>
+            {% endif %}
+          </td>
           <!-- <td>{{ item.shelf_number }}</td>
           <td>{{ item.column_number }}</td>
           <td>{{ item.row_number }}</td>
           <td class="notes-cell" title="Rusty insides">{{ item.notes }}</td> -->
           <td>
-            {# TODO: change href to {% url 'dashboard-edit' part.pk %} #}
-            <a href="{% url 'edit-part' item.id %}" class="btn btn-icon" title="Edit">
-              <i class="fa-solid fa-pen-to-square"></i>
-            </a>
+            {% if user.is_authenticated and user.is_staff %}
+                          
+              
+                {# TODO: change href to {% url 'dashboard-edit' part.pk %} #}
+                <a href="{% url 'edit-part' item.id %}" class="btn btn-icon" title="Edit">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </a>
+
+            {% endif %}
           </td>
+
         </tr>
         {% endfor %}
 
@@ -250,62 +320,88 @@ list all available part types in according to values
     pdfForm.submit();
   });
 
-  // ── Stock adjust (+/−) ─────────────────────────────────────────────────
-  const CSRF = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-  document.addEventListener('click', function (e) {
-    const btn = e.target.closest('.adj-btn');
-    if (!btn) return;
+// ── Stock adjust (+/−) ─────────────────────────────────────────────────
+const CSRF = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-    const pk    = btn.dataset.pk;
-    const field = btn.dataset.field;
-    const delta = btn.dataset.delta;
-
-    // Optimistic UI: disable both buttons for this row while request is in flight
-    const adjuster = btn.closest('.stock-adjuster');
-    const allBtns  = adjuster.querySelectorAll('.adj-btn');
-    allBtns.forEach(b => b.disabled = true);
-
-    fetch(`/part/${pk}/adjust/`, {
-      method:  'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'X-CSRFToken':  CSRF,
-      },
-      body: `field=${field}&delta=${delta}`,
-    })
-    .then(res => {
-      if (!res.ok) throw new Error(`Server error ${res.status}`);
-      return res.json();
-    })
-    .then(data => {
-      // Update the visible number
-      const spanId = `stock-${field === 'total_new' ? 'new' : 'used'}-${pk}`;
-      const span   = document.getElementById(spanId);
-      if (span) span.textContent = data.value;
-
-      // Dim the − button if value is now 0 (can't go lower)
-      const minusBtn = adjuster.querySelector('[data-delta="-1"]');
-      if (minusBtn) minusBtn.classList.toggle('adj-btn--disabled', data.value === 0);
-    })
-    .catch(() => {
-      alert('Could not update stock. Please refresh and try again.');
-    })
-    .finally(() => {
-      allBtns.forEach(b => b.disabled = false);
-    });
+function lockAllAdjustButtons() {
+  document.querySelectorAll('.adj-btn').forEach(b => {
+    b.disabled = true;
+    b.classList.add('adj-btn--disabled');
   });
+}
 
-  // On page load: dim any − buttons whose current value is already 0
+document.addEventListener('click', function (e) {
+  const btn = e.target.closest('.adj-btn');
+  if (!btn || btn.disabled) return;
+
+  const pk    = btn.dataset.pk;
+  const field = btn.dataset.field;
+  const delta = btn.dataset.delta;
+
+  // Lock every adjustment button on the entire page immediately
+  lockAllAdjustButtons();
+
+  fetch(`/part/${pk}/adjust/`, {
+    method:  'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-CSRFToken':  CSRF,
+    },
+    body: `field=${field}&delta=${delta}`,
+  })
+  .then(res => {
+    if (!res.ok) throw new Error(`Server error ${res.status}`);
+    return res.json();
+  })
+  .then(data => {
+    // Update the visible number in place
+    const spanId = `stock-${field === 'total_new' ? 'new' : 'used'}-${pk}`;
+    const span   = document.getElementById(spanId);
+    if (span) span.textContent = data.value;
+    // Auto-reload so the table reflects the saved value
+    window.location.reload();
+  })
+  .catch(() => {
+    alert('Could not update stock. Please refresh and try again.');
+    // On error, unlock so the user can retry
+    document.querySelectorAll('.adj-btn').forEach(b => {
+      b.disabled = false;
+      b.classList.remove('adj-btn--disabled');
+    });
+    // Re-apply 0-floor dimming after unlock
+    applyZeroDimming();
+  });
+});
+
+// On page load: dim any − buttons whose current value is already 0
+function applyZeroDimming() {
   document.querySelectorAll('.adj-btn[data-delta="-1"]').forEach(btn => {
-    const pk    = btn.dataset.pk;
-    const field = btn.dataset.field;
+    const pk     = btn.dataset.pk;
+    const field  = btn.dataset.field;
     const spanId = `stock-${field === 'total_new' ? 'new' : 'used'}-${pk}`;
     const span   = document.getElementById(spanId);
     if (span && parseInt(span.textContent, 10) === 0) {
       btn.classList.add('adj-btn--disabled');
     }
   });
+}
+
+// ── Auto-hide event notifications after 3 seconds ──────────────────
+(function() {
+  const eventNotif = document.getElementById('event-notification');
+  if (eventNotif) {
+    setTimeout(function() {
+      eventNotif.style.transition = 'opacity 0.3s ease';
+      eventNotif.style.opacity = '0';
+      setTimeout(function() {
+        eventNotif.style.display = 'none';
+      }, 300);
+    }, 3000);
+  }
+})();
+
+applyZeroDimming();
 
   // ── Filter: Part Type cascade ───────────────────────────────────────────
   (function() {
@@ -317,8 +413,19 @@ list all available part types in according to values
       // Clear existing options except "All"
       partSelect.innerHTML = '<option value="">All</option>';
 
+      // If no product type selected (or "All"), load all part types
       if (!productTypeId) {
-        callback();
+        fetch('/get-part-types/?product_type_id=all')
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            data.part_types.forEach(function(pt) {
+              const opt = document.createElement('option');
+              opt.value = pt.id;
+              opt.textContent = pt.name;
+              partSelect.appendChild(opt);
+            });
+            callback();
+          });
         return;
       }
 
@@ -335,19 +442,13 @@ list all available part types in according to values
         });
     }
 
-    // Load part types on page load if a product type is selected
+    // Load part types on page load
     const initialProductId = productSelect.value;
-    if (initialProductId) {
-      loadPartTypes(initialProductId, function() {
-        if (preselectedPartType) {
-          partSelect.value = preselectedPartType;
-        }
-      });
-    } else if (preselectedPartType) {
-      // If product type is not selected but part_type is, load all part types
-      // (this shouldn't normally happen, but handle it gracefully)
-      loadPartTypes('', function() {});
-    }
+    loadPartTypes(initialProductId, function() {
+      if (preselectedPartType) {
+        partSelect.value = preselectedPartType;
+      }
+    });
 
     // Reload part types when product type changes
     productSelect.addEventListener('change', function() {

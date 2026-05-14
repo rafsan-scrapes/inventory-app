@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
-/* ── Variables ──────────────────────────────────────────────── */
+/* ── Variables ── */
 :root {
   --bg-dark:      oklch(0.1  0    174);
   --bg:           oklch(0.15 0    174);
@@ -16,21 +16,58 @@
   --warning:      oklch(0.7  0.05 100);
   --success:      oklch(0.7  0.05 160);
   --info:         oklch(0.7  0.05 260);
+  --success-2:    oklch(0.3 0.05 160);
+  --danger-2:     oklch(0.3 0.05 30);
+  --warning-2:    oklch(0.3 0.05 100);
   --radius:       6px;
   --radius-lg:    10px;
   --nav-h:        80px;
 }
 
-/* ── Reset ──────────────────────────────────────────────────── */
+/* ── Notifications ─── */
+.notification {
+  padding: 12px 20px;
+  margin: 0 16px 8px;
+  border-radius: var(--radius);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.notification--success {
+  background-color: var(--success);
+  color: oklch(0 0 0 / 0.8);
+}
+
+.notification--add {
+  background-color: var(--success-2);
+  color: var(--text);
+}
+
+.notification--remove {
+  background-color: var(--warning-2);
+  color: var(--text);
+}
+
+.notification--danger {
+  background-color: var(--danger);
+  color: oklch(0 0 0 / 0.8);
+}
+
+.notification--warning {
+  background-color: var(--warning);
+  color: oklch(0 0 0 / 0.8);
+}
+
+/* ── Reset ──── */
 *, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-/* ── Base ───────────────────────────────────────────────────── */
+/* ── Base ── */
 html {
-  font-size: 16px;
+  font-size: 14px;
   font-family: Poppins, 'Segoe UI', Tahoma, sans-serif;
 }
 
@@ -45,7 +82,7 @@ a {
   text-decoration: none;
 }
 
-/* ── Buttons ────────────────────────────────────────────────── */
+/* ── Buttons ── */
 button, .btn {
   display: inline-flex;
   align-items: center;
@@ -90,7 +127,7 @@ button:active, .btn:active { transform: scale(0.97); }
 }
 .btn-icon:hover { opacity: 0.85; }
 
-/* ── Inputs & Selects ───────────────────────────────────────── */
+/* ── Inputs & Selects ─── */
 input[type="text"],
 input[type="password"],
 input[type="email"],
@@ -127,7 +164,7 @@ input[type="checkbox"] {
   flex-shrink: 0;
 }
 
-/* ── Nav ────────────────────────────────────────────────────── */
+/* ── Nav ─── */
 nav {
   height: var(--nav-h);
   background-color: var(--bg);
@@ -153,7 +190,7 @@ nav {
 .home-link:hover { opacity: 0.8; }
 #box { color: var(--primary); }
 
-/* ── Login page ─────────────────────────────────────────────── */
+/* ── Login page ─── */
 .login-wrapper {
   min-height: calc(100vh - var(--nav-h));
   display: flex;
@@ -220,7 +257,7 @@ nav {
   margin-top: 6px;
 }
 
-/* ── Logout page ────────────────────────────────────────────── */
+/* ── Logout page ──── */
 .logout-wrapper {
   min-height: calc(100vh - var(--nav-h));
   display: flex;
@@ -258,7 +295,7 @@ nav {
   margin-bottom: 24px;
 }
 
-/* ── Index page ─────────────────────────────────────────────── */
+/* ── Index page ─── */
 .page-content {
   padding: 20px;
   max-width: 1600px;
@@ -347,7 +384,7 @@ thead th {
   top: 0;
   background-color: var(--bg);
   color: var(--text-muted);
-  font-size: 1rem;
+  font-size: 0.8rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -387,16 +424,47 @@ table th:nth-child(7),  table td:nth-child(7)  { width: 140px;  } /* new */
 table th:nth-child(8),  table td:nth-child(8)  { width: 140px;  } /* used */
 table th:nth-child(9),  table td:nth-child(9)  { width: 50px;  } /* size */
 table th:nth-child(10), table td:nth-child(10) { width: 70px; } /* model */
-table th:nth-child(11), table td:nth-child(11) { width: 52px;  } /* edit */
+table th:nth-child(11), table td:nth-child(11) { width: 90px; } /* stock status */
+table th:nth-child(12), table td:nth-child(12) { width: 52px;  } /* edit */
 
 /* Stock counts — subtle color hints */
 td.stock-new  { color: var(--success); }
 td.stock-used { color: var(--warning); }
 
+/* Stock Status badges */
+.stock-status {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.stock-status-messages {
+  margin-bottom: 32px;
+}
+
+.stock-status--in-stock {
+  background-color: var(--success-2);
+  color: oklch(0.9 0.05 160);
+}
+
+.stock-status--low {
+  background-color: var(--warning-2);
+  color: oklch(0.9 0.05 100);
+}
+
+.stock-status--out {
+  background-color: var(--danger-2);
+  color: oklch(0.9 0.05 30);
+}
+
 /* Notes truncation */
 td.notes-cell {
   text-align: left;
-  max-width: 0;           /* forces overflow-wrap to work with table-layout:fixed */
+  max-width: 0;          
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -423,9 +491,9 @@ td img.thumb:hover {
   font-size: 1.1rem;
 }
 
-/* ── Lightbox overlay ─────────────────────────────────────────────────── */
+/* ── Lightbox overlay ─── */
 .lightbox {
-  display: none;           /* hidden by default */
+  display: none;     
   position: fixed;
   inset: 0;
   z-index: 999;
@@ -502,12 +570,6 @@ td img.thumb:hover {
 }
 .lightbox-close:active { transform: scale(0.92); }
 
-/* ====================================================================
-   APPEND THESE RULES TO style.css
-   Covers: add/edit part form, image upload, smart dropdowns, grid layout
-   ==================================================================== */
-
-/* ── Fix: number inputs were missing from global selector ────────── */
 input[type="number"] {
   background-color: var(--bg-light);
   color: var(--text);
@@ -528,7 +590,7 @@ textarea {
   min-height: 80px;
 }
 
-/* ── Accessibility utility ───────────────────────────────────────── */
+/* ── Accessibility utility ────── */
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -541,7 +603,7 @@ textarea {
   border: 0;
 }
 
-/* ── Form page header ────────────────────────────────────────────── */
+/* ── Form page header ── */
 .form-page-header {
   display: flex;
   justify-content: space-between;
@@ -551,7 +613,7 @@ textarea {
   flex-wrap: wrap;
 }
 
-/* ── Global (non-field) error box ────────────────────────────────── */
+/* ── Global (non-field) error box ─*/
 .global-errors {
   display: flex;
   align-items: flex-start;
@@ -568,7 +630,7 @@ textarea {
 .global-errors p { margin: 0 0 4px; }
 .global-errors p:last-child { margin-bottom: 0; }
 
-/* ── Part form layout ────────────────────────────────────────────── */
+/* ── Part form layout ───── */
 .part-form {
   display: flex;
   flex-direction: column;
@@ -603,7 +665,7 @@ textarea {
   border-bottom: 1px solid var(--border-muted);
 }
 
-/* ── Form groups ─────────────────────────────────────────────────── */
+/* ── Form groups ───── */
 .form-group {
   display: flex;
   flex-direction: column;
@@ -620,7 +682,7 @@ textarea {
 .req   { color: var(--secondary); font-weight: 700; }
 .opt   { color: var(--highlight); font-weight: 400; font-size: 0.78rem; }
 
-/* ── Sub-grids within a section ──────────────────────────────────── */
+/* ── Sub-grids within a section ──── */
 .form-row-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -632,27 +694,27 @@ textarea {
   gap: 12px;
 }
 
-/* ── Smart dropdown: "Add new…" reveal input ─────────────────────── */
+/* ── Smart dropdown: "Add new…" reveal input ──── */
 .new-value-input {
   margin-top: 6px;
   border-color: var(--primary) !important;
   background-color: oklch(0.17 0.02 174) !important;
 }
 
-/* ── Field-level error ───────────────────────────────────────────── */
+/* ── Field-level error ──*/
 .field-error {
   color: var(--danger);
   font-size: 0.78rem;
 }
 
-/* ── Hint text ───────────────────────────────────────────────────── */
+/* ── Hint text ── */
 .field-hint {
   color: var(--highlight);
   font-size: 0.78rem;
   margin-top: -8px;  /* pulls it closer to the row above */
 }
 
-/* ── Image upload area ───────────────────────────────────────────── */
+/* ── Image upload area ── */
 .image-upload-area {
   display: flex;
   align-items: center;
@@ -690,7 +752,7 @@ textarea {
   object-fit: cover;
 }
 
-/* ── Form actions bar ────────────────────────────────────────────── */
+/* ── Form actions bar ── */
 .form-actions {
   display: flex;
   justify-content: flex-end;
@@ -699,13 +761,13 @@ textarea {
   padding-top: 4px;
 }
 
-/* ── Disabled select state ───────────────────────────────────────── */
+/* ── Disabled select state ── */
 select:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
-/* ── Stock adjuster (+/−) ─────────────────────────────────────────────── */
+/* ── Stock adjuster (+/−) ─── */
 .stock-adjuster {
   display: inline-flex;
   align-items: center;
@@ -757,13 +819,13 @@ select:disabled {
 td.stock-new .stock-val  { color: var(--success); }
 td.stock-used .stock-val { color: var(--warning); }
 
-/* ── Scrollbar ──────────────────────────────────────────────── */
+/* ── Scrollbar ── */
 ::-webkit-scrollbar       { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-dark); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--highlight); }
 
-/* ── Mobile ─────────────────────────────────────────────────── */
+/* ── Mobile ──*/
 @media (max-width: 640px) {
   .page-content  { padding: 12px; }
 
