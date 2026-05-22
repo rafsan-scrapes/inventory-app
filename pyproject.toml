@@ -8,4 +8,5 @@ dependencies = [
     "django>=6.0.5",
     "pillow>=12.2.0",
     "reportlab>=4.5.1",
+    "whitenoise>=6.12.0",
 ]

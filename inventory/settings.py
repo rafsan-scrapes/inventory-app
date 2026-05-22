@@ -25,7 +25,14 @@ SECRET_KEY = "django-insecure-5f0!uw%mt0*@cm-p62ne2qz07eoz%mi&g&-cwcn7xd5$o=5=-7
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "inv.aljaroshi.com",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://inv.aljaroshi.com",
+    "aljaroshi.com",
+]
 
 
 # Application definition
@@ -43,6 +50,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -115,7 +123,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "asert"
 
@@ -124,3 +132,5 @@ MEDIA_URL = "/media/"
 
 LOGIN_REDIRECT_URL = "dashboard-index"
 LOGIN_URL = "user-login"
+
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
