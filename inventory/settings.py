@@ -26,13 +26,14 @@ SECRET_KEY = "django-insecure-5f0!uw%mt0*@cm-p62ne2qz07eoz%mi&g&-cwcn7xd5$o=5=-7
 DEBUG = True
 
 ALLOWED_HOSTS = [
-    "inv.aljaroshi.com",
+    # "127.0.0.1" "inv.aljaroshi.com",
 ]
 
-CSRF_TRUSTED_ORIGINS = [
-    "https://inv.aljaroshi.com",
-    "aljaroshi.com",
-]
+# CSRF_TRUSTED_ORIGINS = [
+#     "https://inv.aljaroshi.com",
+#     "https://aljaroshi.com",
+#     "https://127.0.0.1",
+# ]
 
 
 # Application definition
