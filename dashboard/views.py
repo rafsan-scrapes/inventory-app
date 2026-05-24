@@ -2,8 +2,9 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, FileResponse, HttpResponseBadRequest
 from django.core.exceptions import ValidationError as ModelValidationError
+from django.db.models import OuterRef, Subquery, CharField
 
-from .models import Part, ProductType, Brand, PartType
+from .models import Part, ProductType, Brand, PartType, PartModelNumber
 from .forms import PartForm
 from .pdf_utils import generate_parts_pdf
 from datetime import datetime
@@ -13,7 +14,6 @@ from datetime import datetime
 def index(request):
     items = Part.objects.select_related("product_type", "brand", "part_type").all()
 
-    # Apply filters from GET parameters
     product_type_id = request.GET.get("product_type", "")
     brand_id = request.GET.get("brand", "")
     part_type_id = request.GET.get("part_type", "")
@@ -29,10 +29,25 @@ def index(request):
         items = items.filter(part_type_id=part_type_id)
     if product_model:
         items = items.filter(product_model__icontains=product_model)
-    if part_model:
-        items = items.filter(model_number__icontains=part_model)
 
-    # Filter by computed stock status (done in Python since it's a property)
+    if part_model:
+        items = items.filter(
+            model_numbers__value__icontains=part_model
+        ).distinct()
+        matching = PartModelNumber.objects.filter(
+            part=OuterRef("pk"), value__icontains=part_model
+        ).values("value")[:1]
+        items = items.annotate(
+            searched_model_number=Subquery(matching, output_field=CharField())
+        )
+    else:
+        first_mn = PartModelNumber.objects.filter(
+            part=OuterRef("pk")
+        ).values("value")[:1]
+        items = items.annotate(
+            searched_model_number=Subquery(first_mn, output_field=CharField())
+        )
+
     if stock_status_filter:
         filtered_items = []
         for item in items:
@@ -40,11 +55,9 @@ def index(request):
                 filtered_items.append(item)
         items = filtered_items
 
-    # Get filter options for the form
     product_types = ProductType.objects.all().order_by("name")
     brands = Brand.objects.all().order_by("name")
 
-    # Compute stock status for all parts (unfiltered for summary display)
     all_parts = Part.objects.select_related("product_type", "brand", "part_type").all()
     out_of_stock_parts = []
     low_stock_parts = []
@@ -59,7 +72,6 @@ def index(request):
         elif total <= 2:
             low_stock_parts.append(part_display)
 
-    # Get and clear event notification from session
     event_notification = None
     if 'event_notification' in request.session:
         event_notification = request.session.pop('event_notification')
@@ -75,21 +87,11 @@ def index(request):
     return render(request, "dashboard/index.html", context=context)
 
 
-# ── AJAX: Part-type cascade ────────────────────────────────────────────────
-
-
 @login_required
 def get_part_types(request):
-    """
-    GET /get-part-types/?product_type_id=<id>
-    Returns JSON list of PartTypes for the given ProductType.
-    If product_type_id is 'all' or empty, returns all PartTypes.
-    Called by the add/edit form's JS when Product Type changes.
-    """
     product_type_id = request.GET.get("product_type_id", "").strip()
     part_types = []
     if not product_type_id or product_type_id == "all":
-        # Return all part types (for dashboard filter when "All" is selected)
         part_types = list(
             PartType.objects.values("id", "name")
             .order_by("name")
@@ -103,23 +105,10 @@ def get_part_types(request):
     return JsonResponse({"part_types": part_types})
 
 
-# ── Smart-dropdown FK resolution ───────────────────────────────────────────
-
-
 def _resolve_fk_fields(post_data):
-    """
-    Extract and resolve product_type, brand, and part_type from the smart-dropdown
-    POST fields.  Each FK can come from either a select (existing record) or a
-    text input (new value to create).
-
-    Returns: (product_type, brand, part_type, errors)
-      - Any resolved object may be None when its errors key is set.
-      - errors is a plain dict: field_name → error string (or 'non_field_errors' → list).
-    """
     errors = {}
     product_type = brand = part_type = None
 
-    # ── Product Type ──────────────────────────────────────────────────────
     new_pt_name = post_data.get("new_product_type", "").strip()
     pt_id = post_data.get("product_type_select", "").strip()
 
@@ -133,7 +122,6 @@ def _resolve_fk_fields(post_data):
     else:
         errors["product_type"] = "Product type is required."
 
-    # ── Brand ──────────────────────────────────────────────────────────────
     new_brand_name = post_data.get("new_brand", "").strip()
     brand_id = post_data.get("brand_select", "").strip()
 
@@ -147,7 +135,6 @@ def _resolve_fk_fields(post_data):
     else:
         errors["brand"] = "Brand is required."
 
-    # ── Part Type ──────────────────────────────────────────────────────────
     new_ptype_name = post_data.get("new_part_type", "").strip()
     ptype_id = post_data.get("part_type_select", "").strip()
 
@@ -172,7 +159,11 @@ def _resolve_fk_fields(post_data):
     return product_type, brand, part_type, errors
 
 
-# ── Add part ───────────────────────────────────────────────────────────────
+def _save_model_numbers(part, model_numbers_raw):
+    PartModelNumber.objects.filter(part=part).delete()
+    values = [v.strip() for v in model_numbers_raw if v.strip()]
+    for val in values:
+        PartModelNumber.objects.create(part=part, value=val)
 
 
 @login_required
@@ -183,6 +174,7 @@ def part(request):
     if request.method == "POST":
         product_type, brand, part_type, fk_errors = _resolve_fk_fields(request.POST)
         form = PartForm(request.POST, request.FILES)
+        model_numbers_raw = request.POST.getlist("model_number")
 
         if not fk_errors and form.is_valid():
             part_instance = form.save(commit=False)
@@ -193,7 +185,8 @@ def part(request):
             try:
                 part_instance.full_clean()
                 part_instance.save()
-                # Store success message in session
+                _save_model_numbers(part_instance, model_numbers_raw)
+
                 part_name = f"{part_type.name}-{product_type.name}-{brand.name}"
                 request.session['event_notification'] = {
                     'message': f"{part_name} has been added successfully!",
@@ -231,8 +224,6 @@ def part(request):
                         for msg in msgs
                     ]
         elif not fk_errors and not form.is_valid():
-            # Form is invalid — build instance with FK fields set directly,
-            # then run full_clean() to catch any constraints the form missed.
             part_instance = Part(
                 product_type=product_type,
                 brand=brand,
@@ -241,7 +232,6 @@ def part(request):
                 total_new=form.cleaned_data.get("total_new", 0),
                 total_used=form.cleaned_data.get("total_used", 0),
                 size_kg=form.cleaned_data.get("size_kg"),
-                model_number=form.cleaned_data.get("model_number"),
                 shelf_number=form.cleaned_data.get("shelf_number"),
                 column_number=form.cleaned_data.get("column_number"),
                 row_number=form.cleaned_data.get("row_number"),
@@ -298,8 +288,6 @@ def part(request):
 
             fk_errors["non_field_errors"] = all_errors
 
-        # Re-populate part-type dropdown for the selected product type so the
-        # user doesn't lose their selection on error re-render.
         selected_pt_id = request.POST.get("product_type_select", "").strip()
         selected_part_types = []
         if selected_pt_id and selected_pt_id != "__new__":
@@ -316,10 +304,10 @@ def part(request):
             "fk_errors": fk_errors,
             "posted": request.POST,
             "selected_part_types": selected_part_types,
+            "posted_model_numbers": model_numbers_raw,
         }
         return render(request, "dashboard/add_part.html", context=context)
 
-    # GET
     context = {
         "form": PartForm(),
         "product_types": product_types,
@@ -327,16 +315,13 @@ def part(request):
         "fk_errors": {},
         "posted": {},
         "selected_part_types": [],
+        "posted_model_numbers": [],
     }
     return render(request, "dashboard/add_part.html", context=context)
 
 
-# ── Edit part ──────────────────────────────────────────────────────────────
-
-
 @login_required
 def edit_part(request, pk):
-    """Edit an existing part."""
     item = get_object_or_404(
         Part.objects.select_related("product_type", "brand", "part_type"), pk=pk
     )
@@ -350,12 +335,12 @@ def edit_part(request, pk):
     if request.method == "POST":
         posted = request.POST.copy()
 
-        # Lock product type so it cannot be changed during edit.
         posted["product_type_select"] = str(item.product_type_id)
         posted.pop("new_product_type", None)
 
         product_type, brand, part_type, fk_errors = _resolve_fk_fields(posted)
         form = PartForm(request.POST, request.FILES, instance=item)
+        model_numbers_raw = request.POST.getlist("model_number")
 
         if not fk_errors and form.is_valid():
             part_instance = form.save(commit=False)
@@ -366,6 +351,8 @@ def edit_part(request, pk):
             try:
                 part_instance.full_clean()
                 part_instance.save()
+                _save_model_numbers(part_instance, model_numbers_raw)
+
                 return redirect("dashboard-index")
 
             except ModelValidationError as exc:
@@ -399,8 +386,6 @@ def edit_part(request, pk):
                         for msg in msgs
                     ]
         elif not fk_errors and not form.is_valid():
-            # Form is invalid — build instance with FK fields set directly,
-            # then run full_clean() to catch any constraints the form missed.
             part_instance = Part(
                 product_type=item.product_type,
                 brand=brand,
@@ -409,7 +394,6 @@ def edit_part(request, pk):
                 total_new=form.cleaned_data.get("total_new", 0),
                 total_used=form.cleaned_data.get("total_used", 0),
                 size_kg=form.cleaned_data.get("size_kg"),
-                model_number=form.cleaned_data.get("model_number"),
                 shelf_number=form.cleaned_data.get("shelf_number"),
                 column_number=form.cleaned_data.get("column_number"),
                 row_number=form.cleaned_data.get("row_number"),
@@ -482,6 +466,7 @@ def edit_part(request, pk):
                 "part_types_for_product": part_types_for_product,
                 "fk_errors": fk_errors,
                 "posted": posted,
+                "posted_model_numbers": model_numbers_raw,
             },
         )
 
@@ -498,29 +483,25 @@ def edit_part(request, pk):
             "part_types_for_product": part_types_for_product,
             "fk_errors": {},
             "posted": {},
+            "posted_model_numbers": [],
         },
     )
 
 
 @login_required
 def export_pdf(request):
-    """
-    POST /export/
-    Expects one or more `part_id` values in POST data (injected by JS).
-    Returns a downloadable PDF of the selected parts.
-    """
     if request.method != "POST":
         return redirect("dashboard-index")
 
     part_ids = request.POST.getlist("part_id")
 
     if not part_ids:
-        # Nothing selected — send back with a flag so the template can warn
         return redirect("dashboard-index")
 
     parts = (
         Part.objects.filter(id__in=part_ids)
         .select_related("product_type", "brand", "part_type")
+        .prefetch_related("model_numbers")
         .order_by("id")
     )
 
@@ -555,7 +536,6 @@ def adjust_stock(request, pk):
     current = getattr(part, field)
     new_value = max(0, current + delta)
 
-    # Build notification message for stock change
     part_name = f"{part.part_type.name}-{part.product_type.name}-{part.brand.name}"
     stock_type = "new" if field == "total_new" else "used"
     if delta == 1:

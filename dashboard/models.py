@@ -3,8 +3,6 @@ from django.core.exceptions import ValidationError
 
 
 class ProductType(models.Model):
-    """e.g. "Washing Machine", "Refrigerator" """
-
     name = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
@@ -12,8 +10,6 @@ class ProductType(models.Model):
 
 
 class Brand(models.Model):
-    """e.g. "Bosch", "LG" — independent of ProductType"""
-
     name = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
@@ -21,15 +17,10 @@ class Brand(models.Model):
 
 
 class PartType(models.Model):
-    """
-    e.g. "Motor" for Washing Machine is distinct from "Motor" for Refrigerator.
-    unique_together enforces that.
-    """
-
     name = models.CharField(max_length=150)
     product_type = models.ForeignKey(
         ProductType,
-        on_delete=models.CASCADE,  # PartTypes for a deleted ProductType clean up automatically
+        on_delete=models.CASCADE,
         related_name="part_types",
     )
 
@@ -41,8 +32,6 @@ class PartType(models.Model):
 
 
 class Part(models.Model):
-    """Main inventory record — one row per unique part in the warehouse."""
-
     product_type = models.ForeignKey(
         ProductType,
         on_delete=models.PROTECT,
@@ -63,7 +52,6 @@ class Part(models.Model):
     total_new = models.PositiveIntegerField(default=0)
     total_used = models.PositiveIntegerField(default=0)
     size_kg = models.CharField(max_length=100, null=True, blank=True)
-    model_number = models.CharField(max_length=100, null=True, blank=True)
     shelf_number = models.PositiveIntegerField()
     column_number = models.CharField(max_length=100, null=True)
     row_number = models.CharField(max_length=100, null=True)
@@ -71,19 +59,14 @@ class Part(models.Model):
 
     class Meta:
         unique_together = [
-            # Two different parts can't share the same product/brand/type combination
             ("product_type", "brand", "part_type"),
-            # Two parts can't occupy the exact same shelf location
             ("shelf_number", "column_number", "row_number"),
         ]
 
     def clean(self):
-        # A part must have at least some stock at the time of entry
         if self.total_new == 0 and self.total_used == 0:
             raise ValidationError("A part must have at least one new or used unit.")
 
-        # The chosen PartType must belong to the chosen ProductType.
-        # The frontend enforces this via AJAX cascade; this is the safety net.
         if self.part_type_id and self.product_type_id:
             if self.part_type.product_type_id != self.product_type_id:
                 raise ValidationError(
@@ -97,12 +80,6 @@ class Part(models.Model):
 
     @property
     def stock_status(self):
-        """
-        Returns the stock status based on total_new and total_used:
-        - 'In Stock': sum > 2
-        - 'Out of Stock': sum = 0
-        - 'Low In Stock': sum >= 1 and <= 2
-        """
         total = self.total_new + self.total_used
         if total == 0:
             return "Out of Stock"
@@ -110,3 +87,25 @@ class Part(models.Model):
             return "Low In Stock"
         else:
             return "In Stock"
+
+    @property
+    def first_model_number(self):
+        first = self.model_numbers.first()
+        return first.value if first else None
+
+
+class PartModelNumber(models.Model):
+    part = models.ForeignKey(
+        Part,
+        on_delete=models.CASCADE,
+        related_name="model_numbers",
+    )
+    value = models.CharField(max_length=100)
+
+    class Meta:
+        unique_together = ("part", "value")
+        verbose_name = "Part Model Number"
+        verbose_name_plural = "Part Model Numbers"
+
+    def __str__(self):
+        return self.value

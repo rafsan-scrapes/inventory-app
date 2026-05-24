@@ -3,12 +3,6 @@ from .models import Part
 
 
 class PartForm(forms.ModelForm):
-    """
-    Handles all non-FK fields only.
-    product_type, brand, and part_type are resolved by the view's smart-dropdown
-    logic and set on the instance manually before saving — they do NOT belong here.
-    """
-
     class Meta:
         model = Part
         fields = [
@@ -17,7 +11,6 @@ class PartForm(forms.ModelForm):
             "total_new",
             "total_used",
             "size_kg",
-            "model_number",
             "shelf_number",
             "column_number",
             "row_number",
@@ -31,7 +24,6 @@ class PartForm(forms.ModelForm):
             "total_new": forms.NumberInput(attrs={"min": "0", "placeholder": "0"}),
             "total_used": forms.NumberInput(attrs={"min": "0", "placeholder": "0"}),
             "size_kg": forms.TextInput(attrs={"placeholder": "e.g. 5.5kg/9kg"}),
-            "model_number": forms.TextInput(attrs={"placeholder": "e.g. WAE28468GB"}),
             "shelf_number": forms.NumberInput(
                 attrs={"min": "1", "placeholder": "e.g. 2"}
             ),

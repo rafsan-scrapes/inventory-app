@@ -1,10 +1,5 @@
 from django.contrib import admin
-from .models import ProductType, PartType, Brand, Part
-
-# Register your models here.
-
-from django.contrib import admin
-from .models import ProductType, Brand, PartType, Part
+from .models import ProductType, Brand, PartType, Part, PartModelNumber
 
 
 @admin.register(ProductType)
@@ -24,8 +19,14 @@ class PartTypeAdmin(admin.ModelAdmin):
     search_fields = ["name"]
 
 
+class PartModelNumberInline(admin.TabularInline):
+    model = PartModelNumber
+    extra = 1
+
+
 @admin.register(Part)
 class PartAdmin(admin.ModelAdmin):
+    inlines = [PartModelNumberInline]
     list_display = [
         "product_type",
         "brand",
@@ -36,7 +37,6 @@ class PartAdmin(admin.ModelAdmin):
         "column_number",
         "row_number",
         "size_kg",
-        "model_number",
     ]
     list_filter = ["product_type", "brand"]
-    search_fields = ["model_number", "notes"]
+    search_fields = ["model_numbers__value", "notes"]

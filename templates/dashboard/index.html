@@ -244,7 +244,7 @@ list all available part types in according to values #done
             </div>
           </td>
           <td>{{ item.size_kg }}</td>
-          <td>{{ item.model_number }}</td>
+          <td>{{ item.searched_model_number|default:"—" }}</td>
           <td>
             {% if item.stock_status == 'In Stock' %}
               <span class="stock-status stock-status--in-stock">{{ item.stock_status }}</span>

@@ -190,13 +190,30 @@
         </div>
 
         <div class="form-group">
-          <label for="{{ form.model_number.id_for_label }}" class="form-label">Model Number <span class="opt">optional</span></label>
-          {{ form.model_number }}
-          {% if form.model_number.errors %}
-            <div class="field-error">
-              {% for err in form.model_number.errors %}<p>{{ err }}</p>{% endfor %}
-            </div>
-          {% endif %}
+          <label class="form-label">Model Number <span class="opt">optional</span></label>
+          <div class="model-number-input-row">
+            <input type="text" id="model-number-input" placeholder="e.g. WAE28468GB">
+            <button type="button" id="add-model-number-btn" class="btn btn-outline">Add</button>
+          </div>
+          <div id="model-number-list" class="model-number-list">
+            {% if posted_model_numbers %}
+              {% for mn in posted_model_numbers %}
+              <div class="model-number-tag">
+                <span>{{ mn }}</span>
+                <button type="button" class="model-number-remove" data-value="{{ mn }}">&times;</button>
+                <input type="hidden" name="model_number" value="{{ mn }}">
+              </div>
+              {% endfor %}
+            {% else %}
+              {% for mn in item.model_numbers.all %}
+              <div class="model-number-tag">
+                <span>{{ mn.value }}</span>
+                <button type="button" class="model-number-remove" data-value="{{ mn.value }}">&times;</button>
+                <input type="hidden" name="model_number" value="{{ mn.value }}">
+              </div>
+              {% endfor %}
+            {% endif %}
+          </div>
         </div>
 
         <div class="form-row-3">
@@ -299,6 +316,65 @@
         reader.readAsDataURL(file);
       });
     }
+
+    // ── Model Number Tags ──────────────────────────────────────────────
+    const mnInput = document.getElementById('model-number-input');
+    const mnAddBtn = document.getElementById('add-model-number-btn');
+    const mnList = document.getElementById('model-number-list');
+
+    function addModelNumber(value) {
+      value = value.trim();
+      if (!value) return;
+
+      const existing = mnList.querySelectorAll('input[type="hidden"]');
+      for (let i = 0; i < existing.length; i++) {
+        if (existing[i].value.toLowerCase() === value.toLowerCase()) return;
+      }
+
+      const tag = document.createElement('div');
+      tag.className = 'model-number-tag';
+
+      const span = document.createElement('span');
+      span.textContent = value;
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'model-number-remove';
+      removeBtn.innerHTML = '&times;';
+      removeBtn.addEventListener('click', function () { tag.remove(); });
+
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = 'model_number';
+      hidden.value = value;
+
+      tag.appendChild(span);
+      tag.appendChild(removeBtn);
+      tag.appendChild(hidden);
+      mnList.appendChild(tag);
+    }
+
+    if (mnAddBtn) {
+      mnAddBtn.addEventListener('click', function () {
+        addModelNumber(mnInput.value);
+        mnInput.value = '';
+        mnInput.focus();
+      });
+
+      mnInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          mnAddBtn.click();
+        }
+      });
+    }
+
+    // Delegate remove clicks for pre-rendered tags
+    mnList.addEventListener('click', function (e) {
+      if (e.target.classList.contains('model-number-remove')) {
+        e.target.closest('.model-number-tag').remove();
+      }
+    });
   })();
 </script>
 {% endblock content %}

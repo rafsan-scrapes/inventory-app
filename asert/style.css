@@ -2,20 +2,20 @@
 
 /* ── Variables ── */
 :root {
-  --bg-dark:      oklch(0.1  0    174);
-  --bg:           oklch(0.15 0    174);
-  --bg-light:     oklch(0.2  0    174);
-  --text:         oklch(0.96 0    174);
-  --text-muted:   oklch(0.76 0    174);
-  --highlight:    oklch(0.5  0    174);
-  --border:       oklch(0.4  0    174);
-  --border-muted: oklch(0.3  0    174);
-  --primary:      oklch(0.76 0.1  174);
-  --secondary:    oklch(0.76 0.1  354);
-  --danger:       oklch(0.7  0.05  30);
-  --warning:      oklch(0.7  0.05 100);
-  --success:      oklch(0.7  0.05 160);
-  --info:         oklch(0.7  0.05 260);
+  --bg-dark: oklch(0.92 0 151);
+  --bg: oklch(0.96 0 151);
+  --bg-light: oklch(1 0 151);
+  --text: oklch(0.15 0 151);
+  --text-muted: oklch(0.4 0 151);
+  --highlight: oklch(1 0 151);
+  --border: oklch(0.6 0 151);
+  --border-muted: oklch(0.7 0 151);
+  --primary: oklch(0.4 0.1 151);
+  --secondary: oklch(0.4 0.1 331);
+  --danger: oklch(0.5 0.05 30);
+  --warning: oklch(0.5 0.05 100);
+  --success: oklch(0.5 0.05 160);
+  --info: oklch(0.5 0.05 260);
   --success-2:    oklch(0.3 0.05 160);
   --danger-2:     oklch(0.3 0.05 30);
   --warning-2:    oklch(0.3 0.05 100);
@@ -699,6 +699,59 @@ textarea {
   margin-top: 6px;
   border-color: var(--primary) !important;
   background-color: oklch(0.17 0.02 174) !important;
+}
+
+/* ── Model Number Tags ── */
+.model-number-input-row {
+  display: flex;
+  gap: 8px;
+}
+.model-number-input-row input {
+  flex: 1;
+}
+.model-number-input-row .btn {
+  flex-shrink: 0;
+  padding: 7px 14px;
+}
+
+.model-number-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.model-number-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--bg-light);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.model-number-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--danger);
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.12s, color 0.12s;
+}
+.model-number-remove:hover {
+  background: var(--danger);
+  color: #fff;
 }
 
 /* ── Field-level error ──*/

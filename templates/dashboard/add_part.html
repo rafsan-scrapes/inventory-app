@@ -266,13 +266,22 @@
             {% endif %}
           </div>
           <div class="form-group">
-            <label class="form-label" for="{{ form.model_number.id_for_label }}">
+            <label class="form-label">
               Model No. <span class="opt">(optional)</span>
             </label>
-            {{ form.model_number }}
-            {% if form.model_number.errors %}
-              {% for e in form.model_number.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
-            {% endif %}
+            <div class="model-number-input-row">
+              <input type="text" id="model-number-input" placeholder="e.g. WAE28468GB">
+              <button type="button" id="add-model-number-btn" class="btn btn-outline">Add</button>
+            </div>
+            <div id="model-number-list" class="model-number-list">
+              {% for mn in posted_model_numbers %}
+              <div class="model-number-tag">
+                <span>{{ mn }}</span>
+                <button type="button" class="model-number-remove" data-value="{{ mn }}">&times;</button>
+                <input type="hidden" name="model_number" value="{{ mn }}">
+              </div>
+              {% endfor %}
+            </div>
           </div>
         </div>
 
@@ -326,6 +335,67 @@
   attachSmartSelect('product-type-select', 'new-product-type');
   attachSmartSelect('brand-select',        'new-brand');
   attachSmartSelect('part-type-select',    'new-part-type');
+
+
+  // ── Model Number Tags ──────────────────────────────────────────────
+  const mnInput = document.getElementById('model-number-input');
+  const mnAddBtn = document.getElementById('add-model-number-btn');
+  const mnList = document.getElementById('model-number-list');
+
+  function addModelNumber(value) {
+    value = value.trim();
+    if (!value) return;
+
+    // Check duplicates
+    const existing = mnList.querySelectorAll('input[type="hidden"]');
+    for (let i = 0; i < existing.length; i++) {
+      if (existing[i].value.toLowerCase() === value.toLowerCase()) return;
+    }
+
+    const tag = document.createElement('div');
+    tag.className = 'model-number-tag';
+
+    const span = document.createElement('span');
+    span.textContent = value;
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'model-number-remove';
+    removeBtn.innerHTML = '&times;';
+    removeBtn.addEventListener('click', function () {
+      tag.remove();
+    });
+
+    const hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.name = 'model_number';
+    hidden.value = value;
+
+    tag.appendChild(span);
+    tag.appendChild(removeBtn);
+    tag.appendChild(hidden);
+    mnList.appendChild(tag);
+  }
+
+  mnAddBtn.addEventListener('click', function () {
+    addModelNumber(mnInput.value);
+    mnInput.value = '';
+    mnInput.focus();
+  });
+
+  mnInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      mnAddBtn.click();
+    }
+  });
+
+  // Delegate remove clicks for pre-rendered and dynamically added tags
+  mnList.addEventListener('click', function (e) {
+    if (e.target.classList.contains('model-number-remove')) {
+      e.target.closest('.model-number-tag').remove();
+    }
+  });
 
 
   // ── Part-type AJAX cascade ────────────────────────────────────────────
