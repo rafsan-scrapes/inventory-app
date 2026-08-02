@@ -52,7 +52,7 @@ class Part(models.Model):
     total_new = models.PositiveIntegerField(default=0)
     total_used = models.PositiveIntegerField(default=0)
     size_kg = models.CharField(max_length=100, null=True, blank=True)
-    shelf_number = models.PositiveIntegerField()
+    shelf_number = models.CharField(max_length=100, null=True)
     column_number = models.CharField(max_length=100, null=True)
     row_number = models.CharField(max_length=100, null=True)
     notes = models.TextField(null=True, blank=True)

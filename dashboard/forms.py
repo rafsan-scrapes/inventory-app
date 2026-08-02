@@ -24,9 +24,7 @@ class PartForm(forms.ModelForm):
             "total_new": forms.NumberInput(attrs={"min": "0", "placeholder": "0"}),
             "total_used": forms.NumberInput(attrs={"min": "0", "placeholder": "0"}),
             "size_kg": forms.TextInput(attrs={"placeholder": "e.g. 5.5kg/9kg"}),
-            "shelf_number": forms.NumberInput(
-                attrs={"min": "1", "placeholder": "e.g. 2"}
-            ),
+            "shelf_number": forms.TextInput(attrs={"placeholder": "e.g. 2"}),
             "column_number": forms.TextInput(attrs={"placeholder": "e.g. 3, right"}),
             "row_number": forms.TextInput(attrs={"placeholder": "e.g. 1, left"}),
             "notes": forms.Textarea(
