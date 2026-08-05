@@ -1,0 +1,497 @@
+<!-- add_part.html -->
+
+<!-- TODO: Add warning/error message if shelf,row, col number matches -->
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block title %}Add Part{% endblock %}
+
+{% block content %}
+{% if user.is_authenticated %}
+<div class="page-content">
+
+  <!-- page header -->
+  <div class="form-page-header">
+    <div class="filter-title">
+      <i class="fa-solid fa-plus"></i>
+      <span>Add New Part</span>
+    </div>
+    <a href="{% url 'dashboard-index' %}" class="btn btn-outline">
+      <i class="fa-solid fa-arrow-left"></i> Back
+    </a>
+  </div>
+
+  <!-- Non-field errors (model-level: stock=0, unique constraint, etc.) -->
+  {% if fk_errors.non_field_errors %}
+  <div class="global-errors">
+    <i class="fa-solid fa-circle-exclamation"></i>
+    <div>
+      {% for error in fk_errors.non_field_errors %}
+        <p>{{ error }}</p>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- form -->
+  <form class="part-form" method="POST" action="{% url 'add-part' %}"
+        enctype="multipart/form-data">
+    {% csrf_token %}
+
+    <div class="part-form-grid">
+
+      <!-- LEFT COLUMN — Classification & Image-->
+      <div class="form-section">
+        <h3 class="section-label">Classification</h3>
+
+        <!--Product type -->
+        <div class="form-group">
+          <label class="form-label">
+            Product Type <span class="req">*</span>
+          </label>
+          <select name="product_type_select" id="product-type-select">
+            <option value="">— Select —</option>
+            {% for pt in product_types %}
+              <option value="{{ pt.id }}"
+                {% if posted.product_type_select == pt.id|stringformat:"s" %}selected{% endif %}>
+                {{ pt.name }}
+              </option>
+            {% endfor %}
+            <option value="__new__"
+              {% if posted.product_type_select == "__new__" %}selected{% endif %}>
+              ＋ Add new type…
+            </option>
+          </select>
+          <input
+            type="text"
+            name="new_product_type"
+            id="new-product-type"
+            class="new-value-input"
+            placeholder="New product type name"
+            value="{{ posted.new_product_type }}"
+            {% if posted.product_type_select != "__new__" %}style="display:none"{% endif %}
+          >
+          {% if fk_errors.product_type %}
+            <span class="field-error">{{ fk_errors.product_type }}</span>
+          {% endif %}
+        </div>
+        <!--Product Model-->
+        <div class="form-group">
+          <label class="form-label">
+            Product Model <span class="opt">(optional)</span>
+          </label>
+          {{ form.product_model }}
+            {% if form.product_model.errors %}
+              {% for e in form.product_model.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+            {% endif %}
+        </div>
+        <!--Brand name-->
+        <div class="form-group">
+          <label class="form-label">
+            Brand <span class="req">*</span>
+          </label>
+          <select name="brand_select" id="brand-select">
+            <option value="">— Select —</option>
+            {% for b in brands %}
+              <option value="{{ b.id }}"
+                {% if posted.brand_select == b.id|stringformat:"s" %}selected{% endif %}>
+                {{ b.name }}
+              </option>
+            {% endfor %}
+            <option value="__new__"
+              {% if posted.brand_select == "__new__" %}selected{% endif %}>
+              ＋ Add new brand…
+            </option>
+          </select>
+          <input
+            type="text"
+            name="new_brand"
+            id="new-brand"
+            class="new-value-input"
+            placeholder="New brand name"
+            value="{{ posted.new_brand }}"
+            {% if posted.brand_select != "__new__" %}style="display:none"{% endif %}
+          >
+          {% if fk_errors.brand %}
+            <span class="field-error">{{ fk_errors.brand }}</span>
+          {% endif %}
+        </div>
+
+        <!--Part type-->
+        <div class="form-group">
+          <label class="form-label">
+            Part Type <span class="req">*</span>
+          </label>
+          <select
+            name="part_type_select"
+            id="part-type-select"
+            {% if not selected_part_types and not posted.product_type_select %}disabled{% endif %}
+          >
+            <option value="">
+              {% if selected_part_types %}— Select part type —
+              {% else %}— Select a product type first —{% endif %}
+            </option>
+            {# Pre-populated on error re-render from selected_part_types context #}
+            {% for pt in selected_part_types %}
+              <option value="{{ pt.id }}"
+                {% if posted.part_type_select == pt.id|stringformat:"s" %}selected{% endif %}>
+                {{ pt.name }}
+              </option>
+            {% endfor %}
+            {# Show "Add new" only when a product type has been chosen #}
+            {% if selected_part_types or posted.product_type_select %}
+              <option value="__new__"
+                {% if posted.part_type_select == "__new__" %}selected{% endif %}>
+                ＋ Add new type…
+              </option>
+            {% endif %}
+          </select>
+          <input
+            type="text"
+            name="new_part_type"
+            id="new-part-type"
+            class="new-value-input"
+            placeholder="New part type name"
+            value="{{ posted.new_part_type }}"
+            {% if posted.part_type_select != "__new__" %}style="display:none"{% endif %}
+          >
+          {% if fk_errors.part_type %}
+            <span class="field-error">{{ fk_errors.part_type }}</span>
+          {% endif %}
+        </div>
+
+        <!--Image Upload-->
+        <div class="form-group">
+          <label class="form-label" for="{{ form.image.id_for_label }}">
+            Image <span class="opt">(optional)</span>
+          </label>
+          <label for="{{ form.image.id_for_label }}" class="image-upload-area" id="image-upload-area">
+            <div class="upload-placeholder" id="upload-placeholder">
+              <i class="fa-solid fa-image"></i>
+              <p>Click to upload</p>
+              <small>JPG, PNG, WebP</small>
+            </div>
+            <img id="image-preview" alt="Preview" style="display:none">
+          </label>
+          {# Visually hidden — opened via the label above #}
+          <div class="visually-hidden">{{ form.image }}</div>
+          {% if form.image.errors %}
+            {% for error in form.image.errors %}
+              <span class="field-error">{{ error }}</span>
+            {% endfor %}
+          {% endif %}
+        </div>
+
+      </div>{# /LEFT COLUMN #}
+
+
+      <!--RIGHT COLUMN - STOCK info: shelf, location, etc-->
+      <div class="form-section">
+
+        <h3 class="section-label">Stock</h3>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="{{ form.total_new.id_for_label }}">
+              New Units <span class="req">*</span>
+            </label>
+            {{ form.total_new }}
+            {% if form.total_new.errors %}
+              {% for e in form.total_new.errors %}
+                <span class="field-error">{{ e }}</span>
+              {% endfor %}
+            {% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="{{ form.total_used.id_for_label }}">
+              Used Units <span class="req">*</span>
+            </label>
+            {{ form.total_used }}
+            {% if form.total_used.errors %}
+              {% for e in form.total_used.errors %}
+                <span class="field-error">{{ e }}</span>
+              {% endfor %}
+            {% endif %}
+          </div>
+        </div>
+        <p class="field-hint">At least one must be greater than zero.</p>
+
+        <h3 class="section-label" style="margin-top:24px">Location</h3>
+
+        <div class="form-row-3">
+          <div class="form-group">
+            <label class="form-label" for="{{ form.shelf_number.id_for_label }}">
+              Shelf <span class="req">*</span>
+            </label>
+            {{ form.shelf_number }}
+            {% if form.shelf_number.errors %}
+              {% for e in form.shelf_number.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+            {% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="{{ form.column_number.id_for_label }}">
+              Column <span class="req">*</span>
+            </label>
+            {{ form.column_number }}
+            {% if form.column_number.errors %}
+              {% for e in form.column_number.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+            {% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="{{ form.row_number.id_for_label }}">
+              Row <span class="req">*</span>
+            </label>
+            {{ form.row_number }}
+            {% if form.row_number.errors %}
+              {% for e in form.row_number.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+            {% endif %}
+          </div>
+        </div>
+        {% if fk_errors.shelf_number or fk_errors.column_number or fk_errors.row_number %}
+          <span class="field-error">
+            {% firstof fk_errors.shelf_number fk_errors.column_number fk_errors.row_number %}
+          </span>
+        {% endif %}
+
+        <h3 class="section-label" style="margin-top:24px">Details</h3>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label" for="{{ form.size_kg.id_for_label }}">
+              Size <span class="opt">(kg)</span>
+            </label>
+            {{ form.size_kg }}
+            {% if form.size_kg.errors %}
+              {% for e in form.size_kg.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+            {% endif %}
+          </div>
+          <div class="form-group">
+            <label class="form-label">
+              Model No. <span class="opt">(optional)</span>
+            </label>
+            <div class="model-number-input-row">
+              <input type="text" id="model-number-input" placeholder="e.g. WAE28468GB">
+              <button type="button" id="add-model-number-btn" class="btn btn-outline">Add</button>
+            </div>
+            <div id="model-number-list" class="model-number-list">
+              {% for mn in posted_model_numbers %}
+              <div class="model-number-tag">
+                <span>{{ mn }}</span>
+                <button type="button" class="model-number-remove" data-value="{{ mn }}">&times;</button>
+                <input type="hidden" name="model_number" value="{{ mn }}">
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="{{ form.notes.id_for_label }}">
+            Notes <span class="opt">(optional)</span>
+          </label>
+          {{ form.notes }}
+          {% if form.notes.errors %}
+            {% for e in form.notes.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+          {% endif %}
+        </div>
+
+      </div>{# /RIGHT COLUMN #}
+
+    </div>{# /part-form-grid #}
+
+    <div class="form-actions">
+      <a href="{% url 'dashboard-index' %}" class="btn btn-outline">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        <i class="fa-solid fa-floppy-disk"></i> Save Part
+      </button>
+    </div>
+
+  </form>
+</div>
+
+{# ── JavaScript ──────────────────────────────────────────────────────── #}
+<script>
+  // ── Smart dropdown helper ─────────────────────────────────────────────
+  // When a select changes to '__new__', reveal its companion text input.
+
+  function attachSmartSelect(selectId, textInputId) {
+    const select = document.getElementById(selectId);
+    const input  = document.getElementById(textInputId);
+    if (!select || !input) return;
+
+    select.addEventListener('change', function () {
+      if (this.value === '__new__') {
+        input.style.display = 'block';
+        input.focus();
+        input.required = true;
+      } else {
+        input.style.display = 'none';
+        input.value   = '';
+        input.required = false;
+      }
+    });
+  }
+
+  attachSmartSelect('product-type-select', 'new-product-type');
+  attachSmartSelect('brand-select',        'new-brand');
+  attachSmartSelect('part-type-select',    'new-part-type');
+
+
+  // ── Model Number Tags ──────────────────────────────────────────────
+  const mnInput = document.getElementById('model-number-input');
+  const mnAddBtn = document.getElementById('add-model-number-btn');
+  const mnList = document.getElementById('model-number-list');
+
+  function addModelNumber(value) {
+    value = value.trim();
+    if (!value) return;
+
+    // Check duplicates
+    const existing = mnList.querySelectorAll('input[type="hidden"]');
+    for (let i = 0; i < existing.length; i++) {
+      if (existing[i].value.toLowerCase() === value.toLowerCase()) return;
+    }
+
+    const tag = document.createElement('div');
+    tag.className = 'model-number-tag';
+
+    const span = document.createElement('span');
+    span.textContent = value;
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'model-number-remove';
+    removeBtn.innerHTML = '&times;';
+    removeBtn.addEventListener('click', function () {
+      tag.remove();
+    });
+
+    const hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.name = 'model_number';
+    hidden.value = value;
+
+    tag.appendChild(span);
+    tag.appendChild(removeBtn);
+    tag.appendChild(hidden);
+    mnList.appendChild(tag);
+  }
+
+  mnAddBtn.addEventListener('click', function () {
+    addModelNumber(mnInput.value);
+    mnInput.value = '';
+    mnInput.focus();
+  });
+
+  mnInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      mnAddBtn.click();
+    }
+  });
+
+  // Delegate remove clicks for pre-rendered and dynamically added tags
+  mnList.addEventListener('click', function (e) {
+    if (e.target.classList.contains('model-number-remove')) {
+      e.target.closest('.model-number-tag').remove();
+    }
+  });
+
+
+  // ── Part-type AJAX cascade ────────────────────────────────────────────
+  const productTypeSelect = document.getElementById('product-type-select');
+  const partTypeSelect    = document.getElementById('part-type-select');
+  const newPartTypeInput  = document.getElementById('new-part-type');
+
+  function setPartTypeLoading(msg) {
+    partTypeSelect.innerHTML = `<option value="">${msg}</option>`;
+    partTypeSelect.disabled  = true;
+    newPartTypeInput.style.display = 'none';
+    newPartTypeInput.value = '';
+  }
+
+  async function fetchPartTypes(productTypeId) {
+    if (!productTypeId) {
+      setPartTypeLoading('— Enter product type first —');
+      return;
+    }
+
+    // User selected "__new__" for product type — still enable part type dropdown
+    // so they can create a new part type for the new product type they're about to add
+    if (productTypeId === '__new__') {
+      partTypeSelect.innerHTML =
+        '<option value="">— Select part type —</option>';
+      const addNew = document.createElement('option');
+      addNew.value = '__new__';
+      addNew.textContent = '＋ Add new type…';
+      partTypeSelect.appendChild(addNew);
+      partTypeSelect.disabled = false;
+      newPartTypeInput.style.display = 'none';
+      newPartTypeInput.value = '';
+      return;
+    }
+
+    setPartTypeLoading('Loading…');
+
+    try {
+      const url      = `{% url 'get-part-types' %}?product_type_id=${productTypeId}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Network error');
+      const data = await response.json();
+
+      partTypeSelect.innerHTML =
+        '<option value="">— Select part type —</option>';
+
+      data.part_types.forEach(pt => {
+        const opt       = document.createElement('option');
+        opt.value       = pt.id;
+        opt.textContent = pt.name;
+        partTypeSelect.appendChild(opt);
+      });
+
+      // Always provide option to create a new part type
+      const addNew       = document.createElement('option');
+      addNew.value       = '__new__';
+      addNew.textContent = '＋ Add new type…';
+      partTypeSelect.appendChild(addNew);
+
+      partTypeSelect.disabled = false;
+    } catch (err) {
+      setPartTypeLoading('— Error loading —');
+      console.error('Part type fetch failed:', err);
+    }
+  }
+
+  // Trigger cascade whenever product type select changes
+  productTypeSelect.addEventListener('change', function () {
+    // Smart-select toggle handled by attachSmartSelect above.
+    // Separately, trigger the cascade:
+    fetchPartTypes(this.value);
+  });
+
+  // ── Image preview ─────────────────────────────────────────────────────
+  const imageInput    = document.getElementById('{{ form.image.id_for_label }}');
+  const imagePreview  = document.getElementById('image-preview');
+  const uploadPlaceholder = document.getElementById('upload-placeholder');
+
+  if (imageInput) {
+    imageInput.addEventListener('change', function () {
+      const file = this.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          imagePreview.src          = e.target.result;
+          imagePreview.style.display = 'block';
+          uploadPlaceholder.style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+      } else {
+        imagePreview.style.display       = 'none';
+        uploadPlaceholder.style.display  = 'flex';
+      }
+    });
+  }
+</script>
+
+{% endif %}
+{% endblock content %}

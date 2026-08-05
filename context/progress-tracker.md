@@ -16,13 +16,15 @@ Add car stock tracking to the Inventory App: a `CarStock` child model, collapsib
 
 ## Completed
 
-- None yet.
-
----
+- **Unit 1 — `CarStock` model + migration + admin inline (2026-08-02):**
+  - Added `CarStock` to `dashboard/models.py`: `part` FK → `Part` (CASCADE, `related_name="carstock_set"`), `license_plate` CharField(50), `condition` choices [new/used], `quantity` PositiveIntegerField(default=1); `unique_together (part, license_plate, condition)`; verbose names "Car Stock Entry"/"Car Stock Entries".
+  - Registered `CarStockInline` (pattern of `PartModelNumberInline`) in `PartAdmin.inlines` in `dashboard/admin.py`.
+  - Migration `dashboard/0005_carstock` created and applied cleanly (`migrate` OK). `manage.py check` — no issues. Admin inline registration confirmed via shell.
 
 ## In Progress
 
-- None yet.
+- (none — Unit 1 complete; next is Unit 2: combined stock totals on `Part`)
+
 
 ---
 

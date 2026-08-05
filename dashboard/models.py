@@ -109,3 +109,27 @@ class PartModelNumber(models.Model):
 
     def __str__(self):
         return self.value
+
+
+class CarStock(models.Model):
+    CONDITION_CHOICES = [
+        ("new", "New"),
+        ("used", "Used"),
+    ]
+
+    part = models.ForeignKey(
+        Part,
+        on_delete=models.CASCADE,
+        related_name="carstock_set",
+    )
+    license_plate = models.CharField(max_length=50)
+    condition = models.CharField(max_length=10, choices=CONDITION_CHOICES)
+    quantity = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        unique_together = ("part", "license_plate", "condition")
+        verbose_name = "Car Stock Entry"
+        verbose_name_plural = "Car Stock Entries"
+
+    def __str__(self):
+        return f"{self.part} — {self.license_plate} ({self.get_condition_display()})"

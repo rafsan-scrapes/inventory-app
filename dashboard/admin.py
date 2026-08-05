@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import ProductType, Brand, PartType, Part, PartModelNumber
+from .models import ProductType, Brand, PartType, Part, PartModelNumber, CarStock
 
 
 @admin.register(ProductType)
@@ -24,9 +24,14 @@ class PartModelNumberInline(admin.TabularInline):
     extra = 1
 
 
+class CarStockInline(admin.TabularInline):
+    model = CarStock
+    extra = 1
+
+
 @admin.register(Part)
 class PartAdmin(admin.ModelAdmin):
-    inlines = [PartModelNumberInline]
+    inlines = [PartModelNumberInline, CarStockInline]
     list_display = [
         "product_type",
         "brand",

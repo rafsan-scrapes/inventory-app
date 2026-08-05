@@ -1,0 +1,380 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+
+{% block title %}Edit Part{% endblock %}
+
+{% block content %}
+<div class="page-content">
+  <div class="form-page-header">
+    <div>
+      <h1>Edit Part</h1>
+      <p class="field-hint">
+        Updating: {{ item.product_type }} — {{ item.brand }} — {{ item.part_type }}
+      </p>
+    </div>
+    <a href="{% url 'dashboard-index' %}" class="btn btn-outline btn-icon">
+      ← Back
+    </a>
+  </div>
+
+  {% if fk_errors.non_field_errors %}
+    <div class="global-errors">
+      {% for err in fk_errors.non_field_errors %}
+        <p>{{ err }}</p>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="POST" enctype="multipart/form-data" class="part-form">
+    {% csrf_token %}
+
+    <input type="hidden" name="product_type_select" value="{{ item.product_type_id }}">
+
+    <div class="part-form-grid">
+      <section class="form-section">
+        <div class="section-label">Part identity</div>
+
+        <div class="form-group">
+          <label class="form-label">Product Type <span class="req">*</span></label>
+          <div class="field-hint">
+            Locked to this value for safety.
+          </div>
+          <div class="locked-value">
+            {{ item.product_type }}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="{{ form.product_model.id_for_label }}" class="form-label">
+            Product Model <span class="opt">(optional)</span>
+          </label>
+          {{ form.product_model }}
+            {% if form.product_model.errors %}
+              {% for e in form.product_model.errors %}<span class="field-error">{{ e }}</span>{% endfor %}
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="brand-select" class="form-label">Brand <span class="req">*</span></label>
+          <select id="brand-select" name="brand_select">
+            <option value="">Select brand</option>
+            {% for brand in brands %}
+              {% if posted.brand_select %}
+                <option value="{{ brand.id }}" {% if posted.brand_select == brand.id|stringformat:"s" %}selected{% endif %}>
+                  {{ brand.name }}
+                </option>
+              {% else %}
+                <option value="{{ brand.id }}" {% if item.brand_id == brand.id %}selected{% endif %}>
+                  {{ brand.name }}
+                </option>
+              {% endif %}
+            {% endfor %}
+            <option value="__new__" {% if posted.brand_select == "__new__" %}selected{% endif %}>＋ Add new brand…</option>
+          </select>
+
+          {% if fk_errors.brand %}
+            <div class="field-error">{{ fk_errors.brand }}</div>
+          {% endif %}
+
+          <input
+            type="text"
+            name="new_brand"
+            class="new-value-input"
+            placeholder="Enter new brand"
+            value="{{ posted.new_brand|default:'' }}"
+            {% if posted.brand_select != "__new__" %}style="display:none;"{% endif %}
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="part-type-select" class="form-label">Part Type <span class="req">*</span></label>
+          <select id="part-type-select" name="part_type_select">
+            <option value="">Select part type</option>
+            {% for pt in part_types_for_product %}
+              {% if posted.part_type_select %}
+                <option value="{{ pt.id }}" {% if posted.part_type_select == pt.id|stringformat:"s" %}selected{% endif %}>
+                  {{ pt.name }}
+                </option>
+              {% else %}
+                <option value="{{ pt.id }}" {% if item.part_type_id == pt.id %}selected{% endif %}>
+                  {{ pt.name }}
+                </option>
+              {% endif %}
+            {% endfor %}
+            <option value="__new__" {% if posted.part_type_select == "__new__" %}selected{% endif %}>＋ Add new part type…</option>
+          </select>
+
+          {% if fk_errors.part_type %}
+            <div class="field-error">{{ fk_errors.part_type }}</div>
+          {% endif %}
+
+          <input
+            type="text"
+            name="new_part_type"
+            class="new-value-input"
+            placeholder="Enter new part type"
+            value="{{ posted.new_part_type|default:'' }}"
+            {% if posted.part_type_select != "__new__" %}style="display:none;"{% endif %}
+          >
+          <div class="field-hint">
+            This list is filtered to {{ item.product_type }} only.
+          </div>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <div class="section-label">Inventory details</div>
+
+        <div class="form-group">
+          <label class="form-label">Image</label>
+
+          <label class="image-upload-area" for="id_image">
+            {% if item.image %}
+              <img
+                id="image-preview"
+                src="{{ item.image.url }}"
+                alt="Current part image"
+                style="max-width:100%; max-height:220px; display:block; margin:0 auto 10px;"
+              >
+            {% else %}
+              <img id="image-preview" alt="" style="display:none; max-width:100%; max-height:220px; margin:0 auto 10px;">
+            {% endif %}
+
+            <div class="upload-placeholder" {% if item.image %} style="display:none;"{% endif %}>
+              <i class="fa-solid fa-image"></i>
+              <span>Click to upload a replacement image</span>
+            </div>
+
+            <div class="visually-hidden">{{ form.image }}</div>
+          </label>
+
+          {% if form.image.errors %}
+            <div class="field-error">
+              {% for err in form.image.errors %}
+                <p>{{ err }}</p>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="form-row-3">
+          <div class="form-group">
+            <label for="{{ form.total_new.id_for_label }}" class="form-label">Total New <span class="req">*</span></label>
+            {{ form.total_new }}
+            {% if form.total_new.errors %}
+              <div class="field-error">
+                {% for err in form.total_new.errors %}<p>{{ err }}</p>{% endfor %}
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="form-group">
+            <label for="{{ form.total_used.id_for_label }}" class="form-label">Total Used <span class="req">*</span></label>
+            {{ form.total_used }}
+            {% if form.total_used.errors %}
+              <div class="field-error">
+                {% for err in form.total_used.errors %}<p>{{ err }}</p>{% endfor %}
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="form-group">
+            <label for="{{ form.size_kg.id_for_label }}" class="form-label">Size (kg) <span class="opt">optional</span></label>
+            {{ form.size_kg }}
+            {% if form.size_kg.errors %}
+              <div class="field-error">
+                {% for err in form.size_kg.errors %}<p>{{ err }}</p>{% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Model Number <span class="opt">optional</span></label>
+          <div class="model-number-input-row">
+            <input type="text" id="model-number-input" placeholder="e.g. WAE28468GB">
+            <button type="button" id="add-model-number-btn" class="btn btn-outline">Add</button>
+          </div>
+          <div id="model-number-list" class="model-number-list">
+            {% if posted_model_numbers %}
+              {% for mn in posted_model_numbers %}
+              <div class="model-number-tag">
+                <span>{{ mn }}</span>
+                <button type="button" class="model-number-remove" data-value="{{ mn }}">&times;</button>
+                <input type="hidden" name="model_number" value="{{ mn }}">
+              </div>
+              {% endfor %}
+            {% else %}
+              {% for mn in item.model_numbers.all %}
+              <div class="model-number-tag">
+                <span>{{ mn.value }}</span>
+                <button type="button" class="model-number-remove" data-value="{{ mn.value }}">&times;</button>
+                <input type="hidden" name="model_number" value="{{ mn.value }}">
+              </div>
+              {% endfor %}
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="form-row-3">
+          <div class="form-group">
+            <label for="{{ form.shelf_number.id_for_label }}" class="form-label">Shelf <span class="req">*</span></label>
+            {{ form.shelf_number }}
+            {% if form.shelf_number.errors %}
+              <div class="field-error">
+                {% for err in form.shelf_number.errors %}<p>{{ err }}</p>{% endfor %}
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="form-group">
+            <label for="{{ form.column_number.id_for_label }}" class="form-label">Column <span class="req">*</span></label>
+            {{ form.column_number }}
+            {% if form.column_number.errors %}
+              <div class="field-error">
+                {% for err in form.column_number.errors %}<p>{{ err }}</p>{% endfor %}
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="form-group">
+            <label for="{{ form.row_number.id_for_label }}" class="form-label">Row <span class="req">*</span></label>
+            {{ form.row_number }}
+            {% if form.row_number.errors %}
+              <div class="field-error">
+                {% for err in form.row_number.errors %}<p>{{ err }}</p>{% endfor %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="{{ form.notes.id_for_label }}" class="form-label">Notes <span class="opt">optional</span></label>
+          {{ form.notes }}
+          {% if form.notes.errors %}
+            <div class="field-error">
+              {% for err in form.notes.errors %}<p>{{ err }}</p>{% endfor %}
+            </div>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+
+    <div class="form-actions">
+      <a href="{% url 'dashboard-index' %}" class="btn btn-outline">Cancel</a>
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  (function () {
+    const brandSelect = document.getElementById("brand-select");
+    const brandNewInput = document.querySelector('input[name="new_brand"]');
+    const partTypeSelect = document.getElementById("part-type-select");
+    const partTypeNewInput = document.querySelector('input[name="new_part_type"]');
+
+    function toggleNewInput(selectEl, inputEl) {
+      if (!selectEl || !inputEl) return;
+      if (selectEl.value === "__new__") {
+        inputEl.style.display = "block";
+      } else {
+        inputEl.style.display = "none";
+        inputEl.value = inputEl.value; // preserve typed value if form comes back with errors
+      }
+    }
+
+    if (brandSelect) {
+      brandSelect.addEventListener("change", () => toggleNewInput(brandSelect, brandNewInput));
+      toggleNewInput(brandSelect, brandNewInput);
+    }
+
+    if (partTypeSelect) {
+      partTypeSelect.addEventListener("change", () => toggleNewInput(partTypeSelect, partTypeNewInput));
+      toggleNewInput(partTypeSelect, partTypeNewInput);
+    }
+
+    const fileInput = document.getElementById("id_image");
+    const preview = document.getElementById("image-preview");
+    const placeholder = document.querySelector(".upload-placeholder");
+
+    if (fileInput) {
+      fileInput.addEventListener("change", function () {
+        const file = this.files && this.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          if (preview) {
+            preview.src = e.target.result;
+            preview.style.display = "block";
+          }
+          if (placeholder) {
+            placeholder.style.display = "none";
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // ── Model Number Tags ──────────────────────────────────────────────
+    const mnInput = document.getElementById('model-number-input');
+    const mnAddBtn = document.getElementById('add-model-number-btn');
+    const mnList = document.getElementById('model-number-list');
+
+    function addModelNumber(value) {
+      value = value.trim();
+      if (!value) return;
+
+      const existing = mnList.querySelectorAll('input[type="hidden"]');
+      for (let i = 0; i < existing.length; i++) {
+        if (existing[i].value.toLowerCase() === value.toLowerCase()) return;
+      }
+
+      const tag = document.createElement('div');
+      tag.className = 'model-number-tag';
+
+      const span = document.createElement('span');
+      span.textContent = value;
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'model-number-remove';
+      removeBtn.innerHTML = '&times;';
+      removeBtn.addEventListener('click', function () { tag.remove(); });
+
+      const hidden = document.createElement('input');
+      hidden.type = 'hidden';
+      hidden.name = 'model_number';
+      hidden.value = value;
+
+      tag.appendChild(span);
+      tag.appendChild(removeBtn);
+      tag.appendChild(hidden);
+      mnList.appendChild(tag);
+    }
+
+    if (mnAddBtn) {
+      mnAddBtn.addEventListener('click', function () {
+        addModelNumber(mnInput.value);
+        mnInput.value = '';
+        mnInput.focus();
+      });
+
+      mnInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          mnAddBtn.click();
+        }
+      });
+    }
+
+    // Delegate remove clicks for pre-rendered tags
+    mnList.addEventListener('click', function (e) {
+      if (e.target.classList.contains('model-number-remove')) {
+        e.target.closest('.model-number-tag').remove();
+      }
+    });
+  })();
+</script>
+{% endblock content %}
