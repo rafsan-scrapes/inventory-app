@@ -1,3 +1,24 @@
+# Django settings — contains SECRET_KEY, ALLOWED_HOSTS / domains (personal, keep local only)
+inventory/settings.py
+
+# Environment files — secrets (SECRET_KEY, passwords, API keys)
+.env
+.env.*
+!.env.example
+
+# Database — contains real users, password hashes, business data
+db.sqlite3
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-shm
+*.sqlite3-wal
+
+# User uploads — real part photos / business data
+media/
+
+# Collected static (WhiteNoise STATIC_ROOT=asert) — build output, regenerable
+asert/
+
 # Python-generated files
 __pycache__/
 *.py[oc]
@@ -7,4 +28,16 @@ wheels/
 *.egg-info
 
 # Virtual environments
-.venv
+.venv/
+venv/
+ENV/
+
+# Local Python version pin
+.python-version
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

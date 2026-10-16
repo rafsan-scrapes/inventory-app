@@ -1,160 +1,99 @@
-# Parts Inventory Management
+# Inventory App — Repair-Shop Spare Parts Management
 
-A Django-based web application for managing electronics parts inventory (refrigerators, washing machines, laptops, and their parts like motors, drain hoses, motherboards). Parts are stored in a warehouse organized by shelf/column/row.
+A production Django web app built for a real repair shop to answer one question in seconds: **what is this part, how many do we have (new and used), and exactly where is it — in the warehouse or in which technician's car?**
 
-## Features
+This is a real internal tool, designed with the shop's staff and shaped by how they actually work: one-tap stock adjustments, warehouse ↔ car transfers, and print-ready PDF exports for stocktaking.
 
-- **Part Management**: Add, edit, and view parts with details like product type, brand, part type, stock quantities, model number, and warehouse location
-- **Smart Dropdowns**: Product Type, Brand, and Part Type show a dropdown of existing values plus an option to add new ones dynamically
-- **AJAX Cascading**: When selecting Product Type, the Part Type dropdown automatically filters to show only relevant part types
-- **Search & Filter**: Filter parts by product type, brand, part type, shelf, column, and row
-- **Stock Adjustment**: Increment or decrement new/used stock directly from the inventory list
-- **PDF Export**: Export selected parts to a formatted PDF document
-- **Image Upload**: Attach images to parts
-- **User Authentication**: Login-protected views with Django's authentication system
+## What it does
 
-## Tech Stack
+- **Instant part lookup** — filter and search by product type, brand, part type, model numbers, stock status, and storage location (warehouse vs. specific car)
+- **One-tap stock adjustments** — increment/decrement new & used counts for the warehouse and for individual technician cars, with a confirmation modal distinguishing standalone changes from warehouse ↔ car transfers (applied atomically via `transaction.atomic()`)
+- **Car stock tracking** — per-part breakdown of which license plates carry what, with collapsible sub-rows on the dashboard
+- **Smart add/edit forms** — create new product types, brands, and part types inline; tag-style model-number input; optional initial car stock
+- **PDF export** — selection-based, landscape A4 via ReportLab with embedded part photos, car-stock breakdown, and page numbering
+- **Role-based access** — staff get full controls, regular users get read-only + export, superusers get Django admin; login required everywhere, no self-registration
+- **Stock health at a glance** — color-coded status badges (In Stock / Low ≤ 2 / Out of Stock) plus persistent shortage banners
 
-| Layer | Choice |
-|-------|--------|
-| Backend | Django (Python 3.13), SQLite3 |
-| Frontend | HTML, CSS, Vanilla JavaScript |
-| PDF Generation | ReportLab |
-| Image Processing | Pillow |
-| Auth | Django built-in `django.contrib.auth` |
-| Deployment | Namecheap Stellar Basic shared hosting |
+## Tech & engineering highlights
 
-## Project Structure
+| Area | Details |
+|---|---|
+| Backend | Django 6, Python 3.13, SQLite |
+| Frontend | Server-rendered templates, vanilla JS (`fetch`/AJAX), custom CSS, Font Awesome |
+| PDF | ReportLab (landscape A4, 5 rows/page, embedded images) |
+| Images | `ImageField` + Pillow, served from `/media/` |
+| Static | WhiteNoise (`CompressedManifestStaticFilesStorage`) |
+| Auth | Django built-in auth, `@login_required`, staff/regular/superuser roles |
+
+Notable design decisions:
+
+- **Normalized data model** — `ProductType` / `Brand` independent, `PartType` scoped per product type, `Part` as the unique triple junction, `PartModelNumber` and `CarStock` as child models. Deletion is `PROTECT`-guarded and admin-only to prevent accidental data loss.
+- **Cars are not a first-class model** — license plates live as free text on `CarStock` rows, derived dynamically for filters. No pre-registration friction for staff.
+- **Atomic transfers** — every warehouse ↔ car movement updates two records inside a single transaction, so stock can never half-update.
+- **Server-rendered sub-rows** — car-stock breakdowns ship with the main queryset (`prefetch_related`), so expanding a row costs zero extra requests.
+- **Validation via `full_clean()`** — unique warehouse locations get friendly human-readable errors, not database jargon.
+
+## Project structure
 
 ```
-inventory_management/
-├── manage.py              # Django management script
-├── db.sqlite3             # SQLite database
-├── requirements.txt       # Python dependencies
-├── inventory/
-│   ├── settings.py        # Django settings
-│   ├── urls.py            # Main URL configuration
-│   └── wsgi.py            # WSGI application
-├── dashboard/             # Main app
-│   ├── models.py          # Data models
-│   ├── views.py           # View functions
-│   ├── urls.py            # App URL routing
-│   ├── forms.py           # Django forms
-│   ├── admin.py           # Django admin configuration
-│   └── pdf_utils.py       # PDF generation utilities
+├── manage.py
+├── inventory/            # Project config (settings kept private — see Setup)
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── dashboard/            # Main app
+│   ├── models.py         # ProductType, Brand, PartType, Part, PartModelNumber, CarStock
+│   ├── views.py          # Dashboard, add/edit, AJAX adjust, PDF export
+│   ├── forms.py
+│   ├── admin.py
+│   ├── pdf_utils.py      # ReportLab builder
+│   └── migrations/
 ├── templates/
-│   ├── partials/          # Reusable templates (base, nav)
-│   ├── dashboard/         # Main app templates
-│   └── user/              # Login/logout templates
-└── static/
-    └── style.css          # CSS styles
+│   ├── partials/         # base, nav
+│   ├── dashboard/        # index, add_part, edit_part
+│   └── user/             # login, logout
+├── static/
+│   └── style.css
+├── media/                # User uploads (private, gitignored)
+└── passenger_wsgi.py     # Shared-hosting entry point
 ```
 
-## Data Models
+## Routes
 
-### ProductType
-- `name` (unique): e.g., "Washing Machine", "Refrigerator"
-
-### Brand
-- `name` (unique): e.g., "Bosch", "LG"
-
-### PartType
-- `name`: e.g., "Motor", "Drain Hose"
-- `product_type` (FK to ProductType)
-- Unique together: (name, product_type)
-
-### Part
-- `product_type` (FK, PROTECT)
-- `brand` (FK, PROTECT)
-- `part_type` (FK, PROTECT)
-- `image` (optional)
-- `product_model` (optional): e.g., "RS70F65Q1BLV"
-- `total_new` (PositiveIntegerField)
-- `total_used` (PositiveIntegerField)
-- `size_kg` (optional)
-- `model_number` (optional)
-- `shelf_number` (PositiveIntegerField)
-- `column_number` (CharField)
-- `row_number` (CharField)
-- `notes` (optional)
-
-Unique together:
-- (product_type, brand, part_type)
-- (shelf_number, column_number, row_number)
-
-## URL Routes
-
-| URL | Name | View |
-|-----|------|------|
-| `/` | `dashboard-index` | Part list with filters |
-| `/add/` | `add-part` | Add new part |
-| `/part/edit/<pk>` | `edit-part` | Edit existing part |
-| `/part/<pk>/adjust/` | `adjust-stock` | AJAX stock adjustment |
-| `/get-part-types/` | `get-part-types` | AJAX: get part types by product |
-| `/export/` | `export-pdf` | PDF export (POST) |
-| `/login/` | `user-login` | Login page |
-| `/logout/` | `user-logout` | Logout (POST) |
-| `/admin/` | — | Django admin |
+| URL | Purpose |
+|---|---|
+| `/` | Parts dashboard with filters, stock banners, export |
+| `/add/` | Add a new part |
+| `/part/edit/<pk>/` | Edit an existing part |
+| `/part/<pk>/adjust/` | AJAX warehouse stock adjustment |
+| `/part/<pk>/adjust-car/` | AJAX car stock adjustment |
+| `/get-part-types/` | AJAX cascade: part types by product type |
+| `/get-car-plates/` | AJAX: license plates carrying a part |
+| `/export/` | PDF export (POST) |
+| `/login/` · `/logout/` | Auth (login required everywhere) |
+| `/admin/` | Django admin (deletion + user management) |
 
 ## Setup
 
-1. **Create virtual environment**:
-   ```bash
-   python -m venv .venv
-   .venv\Scripts\activate  # Windows
-   # source .venv/bin/activate  # Linux/Mac
-   ```
+> **Note:** `inventory/settings.py`, `.env`, and `db.sqlite3` are intentionally **not in this repo** (they contain secrets and real business data). To run it, create your own settings from a fresh `django-admin startproject` (Django 6) or ask the repo owner for a sanitized copy.
 
-2. **Install dependencies**:
-   ```bash
-   pip install django pillow reportlab
-   ```
+```bash
+python -m venv .venv
+.venv\Scripts\activate        # Windows
+# source .venv/bin/activate   # Linux/Mac
 
-3. **Run migrations**:
-   ```bash
-   python manage.py migrate
-   ```
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver
+```
 
-4. **Create superuser**:
-   ```bash
-   python manage.py createsuperuser
-   ```
-
-5. **Run development server**:
-   ```bash
-   python manage.py runserver
-   ```
-
-6. **Access the application**:
-   - Open http://127.0.0.1:8000/ in your browser
-   - Log in with your superuser or regular user credentials
-   - Access Django admin at http://127.0.0.1:8000/admin/
-
-## User Accounts
-
-- **Superuser**: Full access including `/admin/` for deletion
-- **Normal user**: Can add, edit, and export parts (no deletion)
-
-No public user registration — accounts are created manually via `createsuperuser` and Django admin.
-
-## Validation Rules
-
-- `total_new` and `total_used` cannot both be zero
-- `part_type.product_type` must match `part.product_type`
-- `full_clean()` is called before saving Part instances
-- Warehouse location (shelf/column/row) must be unique
-
-## Design Decisions
-
-- **Product Type locked on Edit**: Changing it would orphan the PartType FK, so it's shown as plain text with a hidden input
-- **Deletion via `/admin/` only**: Intentional friction to prevent accidental deletions
-- **PDF export is selection-based**: Checkboxes per row + "Select All" option, JS injects selected IDs into a hidden form and POSTs to `/export/`
-- **Smart dropdowns**: Allow adding new Product Types, Brands, and Part Types directly from the form
-- **AJAX cascade**: Part Type dropdown updates when Product Type changes
+Open http://127.0.0.1:8000/, log in, and manage parts. Admin lives at `/admin/`.
 
 ## Deployment
 
-The app is configured for Namecheap Stellar Basic shared hosting. Key settings:
-- Static files served from `/asert/`
-- Media files served from `/media/`
-- `DEBUG = False` for production (update `ALLOWED_HOSTS` accordingly)
+Live in production on Namecheap Stellar shared hosting via `passenger_wsgi.py`, with `DEBUG = False`, WhiteNoise for static files, and media served from `/media/`.
+
+## Status & roadmap
+
+The app is in active development. Current work: car-stock tracking (model + admin done; combined totals, sub-rows, transfer modals, form integration, and PDF column rolling out incrementally). Planned ideas include stock movement history, CSV import, and low-stock alerts.
